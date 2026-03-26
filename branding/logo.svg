@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1a3a6a" />
+      <stop offset="100%" stop-color="#0B0E14" />
+    </radialGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2D7DD2" />
+      <stop offset="50%" stop-color="#58A6FF" />
+      <stop offset="100%" stop-color="#79C0FF" />
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#58A6FF" />
+      <stop offset="100%" stop-color="#2D7DD2" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="bigGlow">
+      <feGaussianBlur stdDeviation="20" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="64" fill="url(#bgGlow)" />
+
+  <!-- Outer glow ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#58A6FF" stroke-width="1.5" opacity="0.15" />
+
+  <!-- Main circle background -->
+  <circle cx="256" cy="256" r="180" fill="url(#accentGrad)" filter="url(#bigGlow)" />
+
+  <!-- Inner dark circle -->
+  <circle cx="256" cy="256" r="148" fill="#0B0E14" />
+
+  <!-- Gear teeth (8 teeth) -->
+  <g fill="url(#accentGrad)" filter="url(#glow)">
+    <!-- Top -->
+    <polygon points="240,56 272,56 278,90 234,90" />
+    <!-- Top-right -->
+    <polygon points="348,100 370,124 344,148 324,128" />
+    <!-- Right -->
+    <polygon points="422,240 456,240 456,272 422,272" />
+    <!-- Bottom-right -->
+    <polygon points="344,364 370,388 348,412 324,384" />
+    <!-- Bottom -->
+    <polygon points="278,422 272,456 240,456 234,422" />
+    <!-- Bottom-left -->
+    <polygon points="188,384 164,412 142,388 168,364" />
+    <!-- Left -->
+    <polygon points="56,272 90,272 90,240 56,240" />
+    <!-- Top-left -->
+    <polygon points="168,148 142,124 164,100 188,128" />
+  </g>
+
+  <!-- Inner ring -->
+  <circle cx="256" cy="256" r="120" fill="none" stroke="url(#ringGrad)" stroke-width="4" filter="url(#glow)" />
+
+  <!-- Aircraft silhouette — top-down view -->
+  <g fill="#E6EDF3" filter="url(#glow)">
+    <path d="
+      M 256,140
+      C 260,140 264,150 264,165
+      L 264,195
+      L 350,225
+      L 350,240
+      L 264,228
+      L 264,310
+      L 300,340
+      L 300,352
+      L 264,335
+      L 264,370
+      L 256,378
+      L 248,370
+      L 248,335
+      L 212,352
+      L 212,340
+      L 248,310
+      L 248,228
+      L 162,240
+      L 162,225
+      L 248,195
+      L 248,165
+      C 248,150 252,140 256,140
+      Z
+    " />
+  </g>
+
+  <!-- Center highlight dot -->
+  <circle cx="256" cy="256" r="6" fill="#58A6FF" opacity="0.5" />
+</svg>

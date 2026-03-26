@@ -1,0 +1,40 @@
+## .NET
+bin/
+obj/
+publish/
+publish2/
+publish3/
+publish4/
+publish_final/
+publish-lite/
+*.user
+*.suo
+*.vs/
+.vs/
+
+## Build outputs
+*.dll
+*.exe
+*.pdb
+!src/**/*.ico
+
+## IDE
+.idea/
+.vscode/
+*.sln.DotSettings
+
+## Tools (icon generator)
+tools/IconGen/bin/
+tools/IconGen/obj/
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+## Temp
+*.tmp
+*.log
+
+## Claude
+.claude/

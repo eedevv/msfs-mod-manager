@@ -1,0 +1,562 @@
+<Window x:Class="ModInstaller.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:ModInstaller.App.ViewModels"
+        xmlns:views="clr-namespace:ModInstaller.App.Views"
+        Title="{Binding WindowTitle}"
+        Height="760" Width="1340" MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BrandBackgroundGradient}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="Segoe UI"
+        AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver" DragLeave="Window_DragLeave">
+
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" />
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Grid>
+        <!-- Background layers -->
+        <Rectangle Fill="{DynamicResource BrandGridPattern}" IsHitTestVisible="False" />
+        <Image Source="{DynamicResource BrandCompassRose}" Width="350" Height="350" Opacity="0.015"
+               HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-50,-50,0" IsHitTestVisible="False" />
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="64" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ═══════════ NAVIGATION SIDEBAR ═══════════ -->
+            <Border Grid.Column="0" Background="#FF080C12"
+                    BorderBrush="#10FFFFFF" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <!-- App icon -->
+                    <Border DockPanel.Dock="Top" Padding="0,16,0,12" HorizontalAlignment="Center">
+                        <Border Width="34" Height="34">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#FF58A6FF" BlurRadius="12" ShadowDepth="0" Opacity="0.35" />
+                            </Border.Effect>
+                            <Image Source="{DynamicResource AppIconDrawing}" />
+                        </Border>
+                    </Border>
+
+                    <!-- Separator -->
+                    <Border DockPanel.Dock="Top" Height="1" Background="#10FFFFFF" Margin="14,0,14,8" />
+
+                    <!-- Bottom buttons -->
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,10">
+                        <!-- Patreon / Donate -->
+                        <Button ToolTip="Support on Patreon" Click="Patreon_Click" Style="{DynamicResource NavButtonStyle}"
+                                Margin="8,2">
+                            <TextBlock Text="&#x2764;" FontSize="16" Foreground="#FFF96854" />
+                        </Button>
+                        <!-- Settings -->
+                        <Button ToolTip="Settings" Click="SettingsButton_Click" Style="{DynamicResource NavButtonStyle}">
+                            <Path Data="{DynamicResource IconSettings}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Nav buttons -->
+                    <StackPanel VerticalAlignment="Top">
+                        <Button x:Name="NavMods" ToolTip="Mods" Click="NavButton_Click" Tag="Mods" Style="{DynamicResource NavButtonStyle}">
+                            <Grid>
+                                <Path Data="{DynamicResource IconMods}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
+                                <!-- Mod count badge -->
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-4,0"
+                                        Background="{DynamicResource AccentBrush}" CornerRadius="7"
+                                        MinWidth="14" Height="14" Padding="3,0"
+                                        Visibility="{Binding TotalModCount, Converter={StaticResource NonZeroToVisibilityConverter}}">
+                                    <TextBlock Text="{Binding TotalModCount}" FontSize="8" FontWeight="Bold"
+                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </Grid>
+                        </Button>
+                        <Button ToolTip="Backups" Click="NavButton_Click" Tag="Backups" Style="{DynamicResource NavButtonStyle}">
+                            <Path Data="{DynamicResource IconBackup}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
+                        </Button>
+                        <Button ToolTip="Profiles" Click="NavButton_Click" Tag="Profiles" Style="{DynamicResource NavButtonStyle}">
+                            <Path Data="{DynamicResource IconProfile}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
+                        </Button>
+                        <Button ToolTip="Conflicts" Click="NavButton_Click" Tag="Conflicts" Style="{DynamicResource NavButtonStyle}">
+                            <Path Data="{DynamicResource IconConflict}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
+                        </Button>
+                        <Button ToolTip="Health" Click="NavButton_Click" Tag="Health" Style="{DynamicResource NavButtonStyle}">
+                            <Path Data="{DynamicResource IconHealth}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" Fill="Transparent" />
+                        </Button>
+                        <Button ToolTip="Analytics" Click="NavButton_Click" Tag="Analytics" Style="{DynamicResource NavButtonStyle}">
+                            <Path Data="{DynamicResource IconAnalytics}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
+                        </Button>
+
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- ═══════════ MAIN CONTENT ═══════════ -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- ═══ HEADER BAR ═══ -->
+                <Border Grid.Row="0" Padding="20,10" Background="#08FFFFFF"
+                        BorderBrush="#08FFFFFF" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Sim selector - glass ComboBox -->
+                        <ComboBox Grid.Column="0" Style="{DynamicResource GlassComboBox}" Width="240"
+                                  ItemsSource="{Binding DetectedInstallations}"
+                                  SelectedItem="{Binding SelectedInstallation}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Version}" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentBrush}" Margin="0,0,10,0" />
+                                        <TextBlock Text="{Binding Source}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <!-- Search bar -->
+                        <TextBox Grid.Column="1" Style="{DynamicResource AnimatedSearchBox}"
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Margin="16,0" VerticalAlignment="Center" />
+
+                        <!-- Stats badges -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
+                            <!-- Glass mod count badge -->
+                            <Border CornerRadius="14" Padding="12,5" Margin="0,0,8,0"
+                                    Background="{DynamicResource GlassPanelBrush}"
+                                    BorderBrush="{DynamicResource GlassPanelBorderBrush}" BorderThickness="1">
+                                <TextBlock FontSize="12">
+                                    <Run Text="{Binding EnabledModCount, Mode=OneWay}" Foreground="{DynamicResource SuccessBrush}" FontWeight="Bold" />
+                                    <Run Text=" / " Foreground="{DynamicResource TextMutedBrush}" />
+                                    <Run Text="{Binding TotalModCount, Mode=OneWay}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <Run Text=" mods" Foreground="{DynamicResource TextMutedBrush}" FontSize="10" />
+                                </TextBlock>
+                            </Border>
+                            <!-- Glass size badge -->
+                            <Border CornerRadius="14" Padding="12,5"
+                                    Background="{DynamicResource GlassPanelBrush}"
+                                    BorderBrush="{DynamicResource GlassPanelBorderBrush}" BorderThickness="1">
+                                <TextBlock Text="{Binding TotalSizeDisplay}" FontSize="12"
+                                           Foreground="{DynamicResource AccentBrush}" FontWeight="Medium" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Install button -->
+                        <!-- Open community folder button -->
+                        <Button Grid.Column="3" Style="{DynamicResource AnimatedSecondaryButton}"
+                                Command="{Binding OpenCommunityFolderCommand}" ToolTip="Open Community Folder"
+                                Padding="10,8" Margin="0,0,8,0">
+                            <Path Data="{DynamicResource IconFolder}" Stroke="{DynamicResource TextSecondaryBrush}"
+                                  StrokeThickness="1.5" Width="14" Height="14" Stretch="Uniform" />
+                        </Button>
+
+                        <Button Grid.Column="4" Style="{DynamicResource AnimatedPrimaryButton}" Click="InstallButton_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{DynamicResource IconInstall}" Stroke="White" StrokeThickness="1.8"
+                                      Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" />
+                                <TextBlock Text="Install" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Glowing accent line -->
+                <Border Grid.Row="0" VerticalAlignment="Bottom" Height="1" Margin="0,0,0,-1">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="Transparent" Offset="0" />
+                            <GradientStop Color="#4058A6FF" Offset="0.2" />
+                            <GradientStop Color="#FF58A6FF" Offset="0.5" />
+                            <GradientStop Color="#4058A6FF" Offset="0.8" />
+                            <GradientStop Color="Transparent" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Effect>
+                        <DropShadowEffect Color="#FF58A6FF" BlurRadius="8" ShadowDepth="0" Opacity="0.5" />
+                    </Border.Effect>
+                </Border>
+
+                <!-- ═══ PAGE CONTENT ═══ -->
+                <Grid Grid.Row="1">
+                    <!-- MODS PAGE -->
+                    <Grid x:Name="ModsPage"
+                          Visibility="{Binding CurrentPage, Converter={StaticResource PageToVisibilityConverter}, ConverterParameter=Mods}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="330" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Empty state -->
+                        <Border Grid.Column="0" x:Name="EmptyStateOverlay" Panel.ZIndex="1" Margin="50"
+                                Visibility="{Binding TotalModCount, Converter={StaticResource ZeroToVisibilityConverter}}">
+                            <!-- Glass card -->
+                            <Border CornerRadius="20" Padding="40"
+                                    Background="{DynamicResource GlassPanelBrush}"
+                                    BorderBrush="{DynamicResource GlassPanelBorderBrush}" BorderThickness="1">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Border Width="90" Height="90" Margin="0,0,0,24">
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="#FF58A6FF" BlurRadius="30" ShadowDepth="0" Opacity="0.25" />
+                                        </Border.Effect>
+                                        <Image Source="{DynamicResource AppIconDrawing}" Opacity="0.5" />
+                                    </Border>
+                                    <TextBlock Text="No mods found" FontSize="22" FontWeight="Light"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                    <TextBlock FontSize="13" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
+                                               TextAlignment="Center" LineHeight="22">
+                                        <Run Text="Drag and drop files here, or click " />
+                                        <Run Text="Install" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                                    </TextBlock>
+                                    <Border Background="#10FFFFFF" CornerRadius="8" Padding="14,6" Margin="0,16,0,0">
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
+                                                   Text=".zip    .7z    .rar    folders" HorizontalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </Border>
+
+                        <!-- Mod DataGrid -->
+                        <DataGrid x:Name="ModGrid" Grid.Column="0" ItemsSource="{Binding ModsView}" SelectedItem="{Binding SelectedMod}"
+                                  IsReadOnly="True" RowStyle="{DynamicResource AnimatedDataGridRow}"
+                                  SelectionMode="Extended" CanUserSortColumns="True"
+                                  MouseDoubleClick="ModGrid_DoubleClick">
+
+                            <!-- Right-click context menu -->
+                            <DataGrid.ContextMenu>
+                                <ContextMenu Background="#FF1A2030" BorderBrush="#20FFFFFF" BorderThickness="1"
+                                              Foreground="{DynamicResource TextPrimaryBrush}">
+                                    <MenuItem Header="Toggle Enable/Disable" Click="ContextToggle_Click" />
+                                    <MenuItem Header="Open Folder" Click="OpenFolderButton_Click" />
+                                    <MenuItem Header="Add/Edit Note" Click="ContextAddNote_Click" />
+                                    <Separator Background="#15FFFFFF" />
+                                    <MenuItem Header="Add to Group" x:Name="GroupsMenuItem" />
+                                    <Separator Background="#15FFFFFF" />
+                                    <MenuItem Header="Enable All Selected" Click="ContextEnableAll_Click" />
+                                    <MenuItem Header="Disable All Selected" Click="ContextDisableAll_Click" />
+                                    <Separator Background="#15FFFFFF" />
+                                    <MenuItem Header="Uninstall (with backup)" Click="ContextUninstall_Click" Foreground="{DynamicResource ErrorBrush}" />
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="" Width="44">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}, Mode=OneWay}"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="NAME" Binding="{Binding DisplayName}" Width="*">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="Medium" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTemplateColumn Header="TYPE" Width="110">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#10FFFFFF" CornerRadius="6" Padding="8,3"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Type}" FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="VERSION" Binding="{Binding Version}" Width="80">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                            <Setter Property="FontFamily" Value="Cascadia Code, Consolas" />
+                                            <Setter Property="FontSize" Value="11" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="SIZE" Binding="{Binding SizeDisplay}" Width="75">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+                                            <Setter Property="FontFamily" Value="Cascadia Code, Consolas" />
+                                            <Setter Property="FontSize" Value="11" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTemplateColumn Header="STATUS" Width="90">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="10" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Enabled">
+                                                                <Setter Property="Background" Value="#183FB950" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Disabled">
+                                                                <Setter Property="Background" Value="#18F85149" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="Medium">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Enabled">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Disabled">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="" Width="36">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Ellipse Width="8" Height="8" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                     ToolTip="{Binding Health}">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Health}" Value="Healthy">
+                                                                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Health}" Value="Warning">
+                                                                <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Health}" Value="Critical">
+                                                                <Setter Property="Fill" Value="{DynamicResource ErrorBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- ═══ DETAIL SIDEBAR ═══ -->
+                        <Border Grid.Column="1" BorderBrush="#10FFFFFF" BorderThickness="1,0,0,0" Background="#06FFFFFF">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,20">
+                                <StackPanel>
+                                    <!-- No selection -->
+                                    <StackPanel Visibility="{Binding SelectedMod, Converter={StaticResource NullToVisibilityConverter}}"
+                                                Margin="0,80,0,0" HorizontalAlignment="Center">
+                                        <Ellipse Width="48" Height="48" Fill="#08FFFFFF" HorizontalAlignment="Center" Margin="0,0,0,14" />
+                                        <TextBlock Text="Select a mod" FontSize="14" Foreground="{DynamicResource TextMutedBrush}"
+                                                   HorizontalAlignment="Center" />
+                                        <TextBlock Text="to view details" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
+                                                   HorizontalAlignment="Center" Opacity="0.5" Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <!-- Mod details -->
+                                    <StackPanel DataContext="{Binding SelectedMod}"
+                                                Visibility="{Binding DataContext.SelectedMod, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NotNullToVisibilityConverter}}">
+
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="Bold"
+                                                   TextWrapping="Wrap" Margin="0,0,0,3" />
+                                        <TextBlock Text="{Binding FolderName}" Foreground="{DynamicResource TextMutedBrush}"
+                                                   FontSize="10" FontFamily="Cascadia Code, Consolas" Margin="0,0,0,6" />
+
+                                        <!-- Accent line -->
+                                        <Border Height="2" CornerRadius="1" Margin="0,0,0,18" HorizontalAlignment="Left" Width="50">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                    <GradientStop Color="#FF58A6FF" Offset="0" />
+                                                    <GradientStop Color="Transparent" Offset="1" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                        </Border>
+
+                                        <!-- Glass info card -->
+                                        <Border CornerRadius="10" Padding="14" Margin="0,0,0,14"
+                                                Background="{DynamicResource GlassPanelBrush}"
+                                                BorderBrush="{DynamicResource GlassPanelBorderBrush}" BorderThickness="1">
+                                            <StackPanel>
+                                                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Creator" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Creator, TargetNullValue=Unknown}" FontSize="12" /></Grid>
+                                                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Version" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Version, TargetNullValue=-}" FontSize="11" FontFamily="Cascadia Code, Consolas" /></Grid>
+                                                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Type" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="12" /></Grid>
+                                                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Size" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding SizeDisplay}" FontSize="11" FontFamily="Cascadia Code, Consolas" /></Grid>
+                                                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Files" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding FileCount}" FontSize="11" FontFamily="Cascadia Code, Consolas" /></Grid>
+                                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Link" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding LinkType}" FontSize="12" /></Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Glass health card -->
+                                        <Border CornerRadius="10" Padding="14" Margin="0,0,0,20"
+                                                Background="{DynamicResource GlassPanelBrush}"
+                                                BorderBrush="{DynamicResource GlassPanelBorderBrush}" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="72" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Health" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                    <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                             Fill="{Binding Health, Converter={StaticResource HealthToColorConverter}}" />
+                                                    <TextBlock Text="{Binding Health}" FontSize="12" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Action buttons -->
+                                        <Button Style="{DynamicResource AnimatedPrimaryButton}" Margin="0,0,0,8" HorizontalAlignment="Stretch"
+                                                Command="{Binding DataContext.ToggleModCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{DynamicResource IconToggle}" Stroke="White" StrokeThickness="1.8"
+                                                      Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" />
+                                                <TextBlock Text="Toggle Enable / Disable" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{DynamicResource AnimatedSecondaryButton}" Margin="0,0,0,8" HorizontalAlignment="Stretch"
+                                                Click="OpenFolderButton_Click">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{DynamicResource IconFolder}" Stroke="{DynamicResource TextPrimaryBrush}" StrokeThickness="1.5"
+                                                      Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" />
+                                                <TextBlock Text="Open Folder" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{DynamicResource AnimatedDangerButton}" HorizontalAlignment="Stretch"
+                                                Command="{Binding DataContext.UninstallModCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{DynamicResource IconDelete}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                      StrokeThickness="1.5" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" />
+                                                <TextBlock Text="Uninstall" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+
+                    <!-- Other pages -->
+                    <views:BackupPanel x:Name="BackupPage" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVisibilityConverter}, ConverterParameter=Backups}" />
+                    <views:ProfilePanel x:Name="ProfilePage" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVisibilityConverter}, ConverterParameter=Profiles}" />
+                    <views:ConflictPanel x:Name="ConflictPage" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVisibilityConverter}, ConverterParameter=Conflicts}" />
+                    <views:HealthPanel x:Name="HealthPage" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVisibilityConverter}, ConverterParameter=Health}" />
+                    <views:AnalyticsPanel x:Name="AnalyticsPage" Visibility="{Binding CurrentPage, Converter={StaticResource PageToVisibilityConverter}, ConverterParameter=Analytics}" />
+                </Grid>
+
+                <!-- ═══ STATUS BAR ═══ -->
+                <Border Grid.Row="2" Padding="16,7" Background="#06FFFFFF" BorderBrush="#08FFFFFF" BorderThickness="0,1,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="200" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Pulsing dot -->
+                        <Ellipse x:Name="LoadingDot" Width="8" Height="8" Margin="0,0,10,0"
+                                 Fill="{DynamicResource AccentBrush}"
+                                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Ellipse.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             From="1" To="0.2" Duration="0:0:0.5" AutoReverse="True" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Ellipse.Triggers>
+                        </Ellipse>
+                        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="{DynamicResource TextMutedBrush}"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="11" />
+                        <!-- Copyright -->
+                        <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="12,0" FontSize="10"
+                                   Foreground="{DynamicResource TextMutedBrush}" Opacity="0.6">
+                            <Run Text="&#x00A9; 2026 @eedev" />
+                        </TextBlock>
+                        <ProgressBar Grid.Column="3" Value="{Binding ProgressValue}" Maximum="100"
+                                     Style="{DynamicResource AnimatedProgressBar}" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Drag overlay -->
+        <Border x:Name="DragOverlay" Background="#DD0B0E14" Visibility="Collapsed" Panel.ZIndex="100">
+            <Border CornerRadius="20" Margin="40"
+                    Background="{DynamicResource GlassPanelBrush}"
+                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2">
+                <Border.Effect>
+                    <DropShadowEffect Color="#FF58A6FF" BlurRadius="50" ShadowDepth="0" Opacity="0.4" />
+                </Border.Effect>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Width="70" Height="70" CornerRadius="35" Background="#1558A6FF" Margin="0,0,0,16"
+                            HorizontalAlignment="Center">
+                        <Path Data="{DynamicResource IconInstall}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"
+                              Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="Drop to install" FontSize="22" FontWeight="Light"
+                               Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Toast -->
+        <views:ToastNotification x:Name="Toast" Panel.ZIndex="200" />
+
+        <!-- First-time walkthrough overlay -->
+        <views:WalkthroughOverlay x:Name="Walkthrough" Panel.ZIndex="300" />
+    </Grid>
+</Window>

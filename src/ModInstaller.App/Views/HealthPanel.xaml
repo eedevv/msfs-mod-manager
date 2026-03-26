@@ -1,0 +1,88 @@
+<UserControl x:Class="ModInstaller.App.Views.HealthPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Health Check" FontSize="24" FontWeight="Bold" />
+            <TextBlock Text="Validate mod integrity, structure, and compatibility" FontSize="13"
+                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <Button Grid.Row="1" Content="&#x1FA7A;  Run Health Check" Style="{DynamicResource AnimatedPrimaryButton}"
+                Click="RunHealthCheck_Click" Margin="0,0,0,16" HorizontalAlignment="Left" />
+
+        <!-- Stats cards -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,16">
+            <Border Background="#1A3FB950" CornerRadius="10" Padding="16,10" Margin="0,0,10,0" MinWidth="100">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="HealthyCount" Text="0" FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Healthy" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+            <Border Background="#1AD29922" CornerRadius="10" Padding="16,10" Margin="0,0,10,0" MinWidth="100">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="WarningCount" Text="0" FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Warnings" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+            <Border Background="#1AF85149" CornerRadius="10" Padding="16,10" MinWidth="100">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="CriticalCount" Text="0" FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Critical" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- Report list -->
+        <Border Grid.Row="3" Background="#10FFFFFF" CornerRadius="12">
+            <ListView x:Name="ReportList" Background="Transparent" BorderThickness="0"
+                      Foreground="{DynamicResource TextPrimaryBrush}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="16,10" BorderBrush="#10FFFFFF" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" FontSize="14" VerticalAlignment="Top"
+                                           Margin="0,2,12,0" Width="16" TextAlignment="Center"
+                                           Text="{Binding Status, Converter={StaticResource HealthToIconConverter}}"
+                                           Foreground="{Binding Status, Converter={StaticResource HealthToColorConverter}}" />
+
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding ModName}" FontWeight="Medium" FontSize="13" />
+                                    <ItemsControl ItemsSource="{Binding Issues}" Margin="0,4,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Message}" FontSize="11"
+                                                           Foreground="{DynamicResource TextMutedBrush}"
+                                                           Margin="0,1,0,1" TextWrapping="Wrap" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,105 @@
+<UserControl x:Class="ModInstaller.App.Views.ProfilePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Profiles &amp; Presets" FontSize="24" FontWeight="Bold" />
+            <TextBlock Text="Save and restore mod configurations for different scenarios" FontSize="13"
+                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <!-- Create profile -->
+        <Border Grid.Row="1" Background="#10FFFFFF" CornerRadius="12" Padding="16" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="ProfileNameBox" Style="{DynamicResource AnimatedSearchBox}"
+                         Margin="0,0,8,0" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="&#x2795;  Save Current State"
+                        Style="{DynamicResource AnimatedPrimaryButton}" Click="SaveProfile_Click" />
+            </Grid>
+        </Border>
+
+        <!-- Profile list -->
+        <Border Grid.Row="2" Background="#10FFFFFF" CornerRadius="12">
+            <ListView x:Name="ProfileList" Background="Transparent" BorderThickness="0"
+                      Foreground="{DynamicResource TextPrimaryBrush}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="16,12" BorderBrush="#10FFFFFF" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Border Background="#1A3FB950" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
+                                            <TextBlock FontSize="10" Foreground="{DynamicResource SuccessBrush}">
+                                                <Run Text="{Binding EnabledMods.Count, Mode=OneWay}" />
+                                                <Run Text=" enabled" />
+                                            </TextBlock>
+                                        </Border>
+                                        <Border Background="#1AF85149" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
+                                            <TextBlock FontSize="10" Foreground="{DynamicResource ErrorBrush}">
+                                                <Run Text="{Binding DisabledMods.Count, Mode=OneWay}" />
+                                                <Run Text=" disabled" />
+                                            </TextBlock>
+                                        </Border>
+                                        <TextBlock Text="{Binding CreatedDate, StringFormat='{}{0:MMM dd}'}"
+                                                   FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Button Grid.Column="1" Content="&#x26A1; Load"
+                                        Style="{DynamicResource AnimatedPrimaryButton}"
+                                        Tag="{Binding Name}" Click="LoadProfile_Click"
+                                        Padding="12,6" FontSize="11" Margin="0,0,8,0" />
+                                <Button Grid.Column="2" Content="&#x2715;"
+                                        Style="{DynamicResource AnimatedSecondaryButton}"
+                                        Tag="{Binding Name}" Click="DeleteProfile_Click"
+                                        Padding="8,6" FontSize="11" Foreground="{DynamicResource ErrorBrush}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+
+                <ListView.Style>
+                    <Style TargetType="ListView">
+                        <Style.Triggers>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate>
+                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,60,0,0">
+                                                <TextBlock Text="No profiles saved" FontSize="16" FontWeight="Light"
+                                                           Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+                                                <TextBlock Text="Enter a name above and save your current mod configuration" FontSize="12"
+                                                           Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
+                                                           Margin="0,4,0,0" Opacity="0.5" />
+                                            </StackPanel>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.Style>
+            </ListView>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,175 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        MSFS Mod Manager Icon — A stylized aircraft silhouette merged with a gear/cog,
+        representing flight simulation + mod management. Uses the brand accent blue.
+    -->
+
+    <!-- Main app icon as DrawingImage (scalable vector, usable anywhere in WPF) -->
+    <DrawingImage x:Key="AppIconDrawing">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <!-- Background circle -->
+                <GeometryDrawing Brush="#FF58A6FF">
+                    <GeometryDrawing.Geometry>
+                        <EllipseGeometry Center="64,64" RadiusX="64" RadiusY="64" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+
+                <!-- Inner darker circle -->
+                <GeometryDrawing Brush="#FF1C2128">
+                    <GeometryDrawing.Geometry>
+                        <EllipseGeometry Center="64,64" RadiusX="52" RadiusY="52" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+
+                <!-- Gear teeth (8 teeth around the circle) -->
+                <GeometryDrawing Brush="#FF58A6FF">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry>
+                            <!-- Top tooth -->
+                            <PathFigure StartPoint="58,8" IsClosed="True">
+                                <LineSegment Point="70,8" />
+                                <LineSegment Point="72,20" />
+                                <LineSegment Point="56,20" />
+                            </PathFigure>
+                            <!-- Top-right tooth -->
+                            <PathFigure StartPoint="92,20" IsClosed="True">
+                                <LineSegment Point="102,28" />
+                                <LineSegment Point="96,38" />
+                                <LineSegment Point="84,32" />
+                            </PathFigure>
+                            <!-- Right tooth -->
+                            <PathFigure StartPoint="108,52" IsClosed="True">
+                                <LineSegment Point="120,58" />
+                                <LineSegment Point="120,70" />
+                                <LineSegment Point="108,76" />
+                            </PathFigure>
+                            <!-- Bottom-right tooth -->
+                            <PathFigure StartPoint="96,90" IsClosed="True">
+                                <LineSegment Point="102,100" />
+                                <LineSegment Point="92,108" />
+                                <LineSegment Point="84,96" />
+                            </PathFigure>
+                            <!-- Bottom tooth -->
+                            <PathFigure StartPoint="72,108" IsClosed="True">
+                                <LineSegment Point="70,120" />
+                                <LineSegment Point="58,120" />
+                                <LineSegment Point="56,108" />
+                            </PathFigure>
+                            <!-- Bottom-left tooth -->
+                            <PathFigure StartPoint="44,96" IsClosed="True">
+                                <LineSegment Point="36,108" />
+                                <LineSegment Point="26,100" />
+                                <LineSegment Point="32,90" />
+                            </PathFigure>
+                            <!-- Left tooth -->
+                            <PathFigure StartPoint="20,76" IsClosed="True">
+                                <LineSegment Point="8,70" />
+                                <LineSegment Point="8,58" />
+                                <LineSegment Point="20,52" />
+                            </PathFigure>
+                            <!-- Top-left tooth -->
+                            <PathFigure StartPoint="32,38" IsClosed="True">
+                                <LineSegment Point="26,28" />
+                                <LineSegment Point="36,20" />
+                                <LineSegment Point="44,32" />
+                            </PathFigure>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+
+                <!-- Inner ring -->
+                <GeometryDrawing>
+                    <GeometryDrawing.Geometry>
+                        <EllipseGeometry Center="64,64" RadiusX="38" RadiusY="38" />
+                    </GeometryDrawing.Geometry>
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#FF58A6FF" Thickness="3" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+
+                <!-- Aircraft silhouette — simplified top-down view -->
+                <GeometryDrawing Brush="#FFE6EDF3">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry>
+                            <!-- Fuselage + wings top-down -->
+                            <PathFigure StartPoint="64,38" IsClosed="True">
+                                <!-- Nose -->
+                                <BezierSegment Point1="66,38" Point2="67,42" Point3="67,46" />
+                                <!-- Right fuselage to wing -->
+                                <LineSegment Point="67,54" />
+                                <!-- Right wing -->
+                                <LineSegment Point="90,60" />
+                                <LineSegment Point="90,64" />
+                                <LineSegment Point="67,62" />
+                                <!-- Right fuselage after wing -->
+                                <LineSegment Point="67,76" />
+                                <!-- Right tail -->
+                                <LineSegment Point="78,82" />
+                                <LineSegment Point="78,85" />
+                                <LineSegment Point="67,80" />
+                                <!-- Tail point -->
+                                <LineSegment Point="67,88" />
+                                <LineSegment Point="64,90" />
+                                <LineSegment Point="61,88" />
+                                <!-- Left tail -->
+                                <LineSegment Point="61,80" />
+                                <LineSegment Point="50,85" />
+                                <LineSegment Point="50,82" />
+                                <LineSegment Point="61,76" />
+                                <!-- Left fuselage after wing -->
+                                <LineSegment Point="61,62" />
+                                <!-- Left wing -->
+                                <LineSegment Point="38,64" />
+                                <LineSegment Point="38,60" />
+                                <LineSegment Point="61,54" />
+                                <!-- Left fuselage to nose -->
+                                <LineSegment Point="61,46" />
+                                <BezierSegment Point1="61,42" Point2="62,38" Point3="64,38" />
+                            </PathFigure>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Smaller version for taskbar/title bar (16x16 friendly) -->
+    <DrawingImage x:Key="AppIconSmall">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#FF58A6FF">
+                    <GeometryDrawing.Geometry>
+                        <EllipseGeometry Center="8,8" RadiusX="8" RadiusY="8" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="White">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry>
+                            <PathFigure StartPoint="8,3" IsClosed="True">
+                                <LineSegment Point="9,6" />
+                                <LineSegment Point="13,8" />
+                                <LineSegment Point="13,9" />
+                                <LineSegment Point="9,8" />
+                                <LineSegment Point="9,11" />
+                                <LineSegment Point="11,12" />
+                                <LineSegment Point="11,13" />
+                                <LineSegment Point="8,12" />
+                                <LineSegment Point="5,13" />
+                                <LineSegment Point="5,12" />
+                                <LineSegment Point="7,11" />
+                                <LineSegment Point="7,8" />
+                                <LineSegment Point="3,9" />
+                                <LineSegment Point="3,8" />
+                                <LineSegment Point="7,6" />
+                            </PathFigure>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+</ResourceDictionary>

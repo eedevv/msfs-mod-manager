@@ -1,0 +1,77 @@
+<UserControl x:Class="ModInstaller.App.Views.ConflictPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Conflict Scanner" FontSize="24" FontWeight="Bold" />
+            <TextBlock Text="Detect file conflicts between installed mods" FontSize="13"
+                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Content="&#x1F50D;  Scan for Conflicts" Style="{DynamicResource AnimatedPrimaryButton}"
+                    Click="ScanConflicts_Click" Margin="0,0,8,0" />
+            <TextBlock x:Name="ScanStatus" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+        </StackPanel>
+
+        <Border Grid.Row="2" Background="#10FFFFFF" CornerRadius="12" Padding="0">
+            <ListView x:Name="ConflictList" Background="Transparent" BorderThickness="0"
+                      Foreground="{DynamicResource TextPrimaryBrush}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="16,12" BorderBrush="#10FFFFFF" BorderThickness="0,0,0,1">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Border Background="#1AF85149" CornerRadius="4" Padding="8,3" Margin="0,0,8,0">
+                                        <TextBlock Text="{Binding ModA}" FontSize="12" FontWeight="Medium"
+                                                   Foreground="{DynamicResource ErrorBrush}" />
+                                    </Border>
+                                    <TextBlock Text="&#x2194;" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,8,0" />
+                                    <Border Background="#1AF85149" CornerRadius="4" Padding="8,3">
+                                        <TextBlock Text="{Binding ModB}" FontSize="12" FontWeight="Medium"
+                                                   Foreground="{DynamicResource ErrorBrush}" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="{Binding Description}" FontSize="11"
+                                           Foreground="{DynamicResource TextMutedBrush}" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+
+                <ListView.Style>
+                    <Style TargetType="ListView">
+                        <Style.Triggers>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate>
+                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,60,0,0">
+                                                <TextBlock Text="&#x2705;" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                                <TextBlock Text="No conflicts detected" FontSize="16" FontWeight="Light"
+                                                           Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+                                                <TextBlock Text="Run a scan to check for file conflicts" FontSize="12"
+                                                           Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
+                                                           Margin="0,4,0,0" Opacity="0.5" />
+                                            </StackPanel>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.Style>
+            </ListView>
+        </Border>
+    </Grid>
+</UserControl>

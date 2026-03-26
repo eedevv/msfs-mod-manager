@@ -1,0 +1,60 @@
+<Window x:Class="ModInstaller.App.Views.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About" Height="460" Width="440"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BrandBackgroundGradient}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="Segoe UI" ResizeMode="NoResize">
+
+    <Grid Margin="30">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <!-- Icon -->
+            <Border Width="72" Height="72" Margin="0,0,0,20" HorizontalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect Color="#FF58A6FF" BlurRadius="20" ShadowDepth="0" Opacity="0.35" />
+                </Border.Effect>
+                <Image Source="{DynamicResource AppIconDrawing}" />
+            </Border>
+
+            <TextBlock HorizontalAlignment="Center" FontSize="22" Margin="0,0,0,4">
+                <Run Text="MSFS" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                <Run Text=" Mod Manager" FontWeight="Light" />
+            </TextBlock>
+            <TextBlock Text="Version 3.0" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                       HorizontalAlignment="Center" Margin="0,0,0,20" />
+
+            <!-- Glass info card -->
+            <Border CornerRadius="10" Padding="20,14"
+                    Background="{DynamicResource GlassPanelBrush}"
+                    BorderBrush="{DynamicResource GlassPanelBorderBrush}" BorderThickness="1"
+                    Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Built with .NET 8 + WPF" FontSize="12"
+                               Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                    <TextBlock Text="Compatible with MSFS 2020 and 2024" FontSize="11"
+                               Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- Copyright -->
+            <TextBlock HorizontalAlignment="Center" FontSize="12" Margin="0,0,0,16"
+                       Foreground="{DynamicResource TextSecondaryBrush}">
+                <Run Text="&#x00A9; 2026 @eedev  —  All rights reserved" />
+            </TextBlock>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Style="{DynamicResource AnimatedPrimaryButton}" Click="Patreon_Click"
+                        Margin="0,0,10,0" Padding="16,8">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x2764;" FontSize="14" Foreground="#FFF96854" Margin="0,0,8,0" />
+                        <TextBlock Text="Support on Patreon" />
+                    </StackPanel>
+                </Button>
+                <Button Content="Close" Style="{DynamicResource AnimatedSecondaryButton}"
+                        Click="Close_Click" Width="90" Padding="14,8" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

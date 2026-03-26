@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="500" viewBox="0 0 1600 500">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080C12" />
+      <stop offset="30%" stop-color="#0B1120" />
+      <stop offset="60%" stop-color="#0F1B35" />
+      <stop offset="100%" stop-color="#0B0E14" />
+    </linearGradient>
+    <linearGradient id="accentLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="transparent" />
+      <stop offset="20%" stop-color="#58A6FF" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#79C0FF" />
+      <stop offset="80%" stop-color="#58A6FF" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="transparent" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2D7DD2" />
+      <stop offset="50%" stop-color="#58A6FF" />
+      <stop offset="100%" stop-color="#79C0FF" />
+    </linearGradient>
+    <radialGradient id="logoGlow" cx="15%" cy="50%" r="25%">
+      <stop offset="0%" stop-color="#58A6FF" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="transparent" />
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+    <filter id="textGlow">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+    <!-- Grid pattern -->
+    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+      <line x1="50" y1="0" x2="50" y2="50" stroke="#58A6FF" stroke-width="0.3" opacity="0.06" />
+      <line x1="0" y1="50" x2="50" y2="50" stroke="#58A6FF" stroke-width="0.3" opacity="0.06" />
+    </pattern>
+    <!-- Compass decorative -->
+    <g id="compass">
+      <circle cx="0" cy="0" r="120" fill="none" stroke="#58A6FF" stroke-width="0.5" opacity="0.08" />
+      <circle cx="0" cy="0" r="90" fill="none" stroke="#58A6FF" stroke-width="0.3" opacity="0.05" />
+      <line x1="0" y1="-120" x2="0" y2="120" stroke="#58A6FF" stroke-width="0.3" opacity="0.06" />
+      <line x1="-120" y1="0" x2="120" y2="0" stroke="#58A6FF" stroke-width="0.3" opacity="0.06" />
+      <line x1="-85" y1="-85" x2="85" y2="85" stroke="#58A6FF" stroke-width="0.3" opacity="0.04" />
+      <line x1="85" y1="-85" x2="-85" y2="85" stroke="#58A6FF" stroke-width="0.3" opacity="0.04" />
+    </g>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="500" fill="url(#bgGrad)" />
+  <rect width="1600" height="500" fill="url(#grid)" />
+
+  <!-- Logo glow -->
+  <rect width="1600" height="500" fill="url(#logoGlow)" />
+
+  <!-- Decorative compass elements -->
+  <use href="#compass" x="1350" y="250" />
+  <use href="#compass" x="100" y="420" opacity="0.5" />
+
+  <!-- Decorative horizontal lines -->
+  <line x1="0" y1="80" x2="400" y2="80" stroke="#58A6FF" stroke-width="0.5" opacity="0.08" />
+  <line x1="0" y1="420" x2="500" y2="420" stroke="#58A6FF" stroke-width="0.5" opacity="0.06" />
+  <line x1="1100" y1="120" x2="1600" y2="120" stroke="#58A6FF" stroke-width="0.5" opacity="0.05" />
+
+  <!-- ═══ LOGO ═══ -->
+  <g transform="translate(140, 250)">
+    <!-- Outer circle -->
+    <circle cx="0" cy="0" r="110" fill="url(#accentGrad)" filter="url(#glow)" />
+    <!-- Inner dark -->
+    <circle cx="0" cy="0" r="90" fill="#0B0E14" />
+    <!-- Gear teeth -->
+    <g fill="url(#accentGrad)">
+      <polygon points="-10,-108 10,-108 12,-88 -12,-88" />
+      <polygon points="62,-86 78,-72 66,-56 52,-68" />
+      <polygon points="88,-10 108,-10 108,10 88,10" />
+      <polygon points="66,56 78,72 62,86 52,68" />
+      <polygon points="12,88 10,108 -10,108 -12,88" />
+      <polygon points="-52,68 -62,86 -78,72 -66,56" />
+      <polygon points="-108,10 -88,10 -88,-10 -108,-10" />
+      <polygon points="-66,-56 -78,-72 -62,-86 -52,-68" />
+    </g>
+    <!-- Inner ring -->
+    <circle cx="0" cy="0" r="72" fill="none" stroke="url(#accentGrad)" stroke-width="2.5" filter="url(#glow)" />
+    <!-- Aircraft -->
+    <g fill="#E6EDF3" filter="url(#glow)">
+      <path d="
+        M 0,-60
+        C 2.5,-60 4,-52 4,-42
+        L 4,-28
+        L 48,-14
+        L 48,-6
+        L 4,-12
+        L 4,30
+        L 22,46
+        L 22,52
+        L 4,40
+        L 4,58
+        L 0,64
+        L -4,58
+        L -4,40
+        L -22,52
+        L -22,46
+        L -4,30
+        L -4,-12
+        L -48,-6
+        L -48,-14
+        L -4,-28
+        L -4,-42
+        C -4,-52 -2.5,-60 0,-60
+        Z
+      " />
+    </g>
+  </g>
+
+  <!-- ═══ TEXT ═══ -->
+  <g transform="translate(310, 200)">
+    <!-- Main title -->
+    <text font-family="Segoe UI, Arial, sans-serif" font-size="72" font-weight="700" fill="#58A6FF"
+          filter="url(#textGlow)">MSFS</text>
+    <text x="248" font-family="Segoe UI, Arial, sans-serif" font-size="72" font-weight="300" fill="#E6EDF3">Mod Manager</text>
+
+    <!-- Version badge -->
+    <rect x="750" y="-10" width="65" height="30" rx="6" fill="#58A6FF" fill-opacity="0.15" stroke="#58A6FF" stroke-width="1" stroke-opacity="0.3" />
+    <text x="782" y="12" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="600" fill="#58A6FF"
+          text-anchor="middle">v3.0</text>
+
+    <!-- Subtitle -->
+    <text y="50" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="400" fill="#8B949E">
+      The ultimate mod manager for Microsoft Flight Simulator
+    </text>
+
+    <!-- Accent line -->
+    <rect y="75" width="280" height="2" rx="1" fill="url(#accentLine)" filter="url(#glow)" />
+
+    <!-- Feature pills -->
+    <g transform="translate(0, 110)">
+      <!-- Pill 1 -->
+      <rect x="0" y="0" width="120" height="32" rx="16" fill="#58A6FF" fill-opacity="0.1" stroke="#58A6FF" stroke-width="1" stroke-opacity="0.2" />
+      <text x="60" y="21" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#58A6FF" text-anchor="middle">Install</text>
+
+      <!-- Pill 2 -->
+      <rect x="135" y="0" width="120" height="32" rx="16" fill="#3FB950" fill-opacity="0.1" stroke="#3FB950" stroke-width="1" stroke-opacity="0.2" />
+      <text x="195" y="21" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#3FB950" text-anchor="middle">Manage</text>
+
+      <!-- Pill 3 -->
+      <rect x="270" y="0" width="120" height="32" rx="16" fill="#D29922" fill-opacity="0.1" stroke="#D29922" stroke-width="1" stroke-opacity="0.2" />
+      <text x="330" y="21" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#D29922" text-anchor="middle">Profiles</text>
+
+      <!-- Pill 4 -->
+      <rect x="405" y="0" width="120" height="32" rx="16" fill="#F85149" fill-opacity="0.1" stroke="#F85149" stroke-width="1" stroke-opacity="0.2" />
+      <text x="465" y="21" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#F85149" text-anchor="middle">Health</text>
+
+      <!-- Pill 5 -->
+      <rect x="540" y="0" width="120" height="32" rx="16" fill="#79C0FF" fill-opacity="0.1" stroke="#79C0FF" stroke-width="1" stroke-opacity="0.2" />
+      <text x="600" y="21" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#79C0FF" text-anchor="middle">Analytics</text>
+    </g>
+  </g>
+
+  <!-- ═══ BOTTOM BAR ═══ -->
+  <!-- Accent line across bottom -->
+  <rect x="0" y="460" width="1600" height="2" fill="url(#accentLine)" />
+
+  <!-- Copyright -->
+  <text x="1560" y="490" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#484F58"
+        text-anchor="end">&#169; 2025 @eedev</text>
+
+  <!-- MSFS 2020 + 2024 badge bottom-left -->
+  <g transform="translate(40, 474)">
+    <rect x="0" y="0" width="85" height="22" rx="4" fill="#58A6FF" fill-opacity="0.1" stroke="#58A6FF" stroke-width="0.8" stroke-opacity="0.2" />
+    <text x="42" y="15" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#58A6FF" text-anchor="middle" font-weight="600">MSFS 2020</text>
+    <rect x="95" y="0" width="85" height="22" rx="4" fill="#58A6FF" fill-opacity="0.1" stroke="#58A6FF" stroke-width="0.8" stroke-opacity="0.2" />
+    <text x="137" y="15" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#58A6FF" text-anchor="middle" font-weight="600">MSFS 2024</text>
+  </g>
+</svg>
