@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -15,6 +16,63 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         _settings = settings;
         LoadSettings();
+        ApplyLocalization();
+    }
+
+    private void ApplyLocalization()
+    {
+        // Window title
+        Title = LocalizationService.Get("settings_title");
+
+        // Header
+        SettingsTitleText.Text = LocalizationService.Get("settings_title");
+
+        // Language section
+        LangSectionHeader.Text = LocalizationService.Get("settings_language").ToUpperInvariant();
+        LangSectionDesc.Text = LocalizationService.Get("settings_language_desc");
+        InterfaceLangLabel.Text = LocalizationService.Get("settings_interface_lang") + ":";
+
+        // Community folder section
+        CommunitySectionHeader.Text = LocalizationService.Get("settings_community").ToUpperInvariant();
+        CommunitySectionDesc.Text = LocalizationService.Get("settings_community_desc");
+        UseCustomFolderLabel.Text = LocalizationService.Get("settings_custom_folder");
+        BrowseCustomBtn.Content = LocalizationService.Get("settings_browse");
+
+        // Backup section
+        BackupSectionHeader.Text = LocalizationService.Get("settings_backups").ToUpperInvariant();
+        BackupSectionDesc.Text = LocalizationService.Get("settings_backups_desc");
+        BackupDirLabel.Text = LocalizationService.Get("settings_backup_dir") + ":";
+        BrowseBackupBtn.Content = LocalizationService.Get("settings_browse");
+
+        // Library section
+        LibrarySectionHeader.Text = LocalizationService.Get("settings_library").ToUpperInvariant();
+        LibrarySectionDesc.Text = LocalizationService.Get("settings_library_desc");
+        UseJunctionsLabel.Text = LocalizationService.Get("settings_junctions");
+        LibraryDirLabel.Text = LocalizationService.Get("settings_library_dir") + ":";
+        BrowseLibraryBtn.Content = LocalizationService.Get("settings_browse");
+
+        // Watch folder section
+        WatchSectionHeader.Text = LocalizationService.Get("settings_watch_folder").ToUpperInvariant();
+        WatchSectionDesc.Text = LocalizationService.Get("settings_watch_folder_desc");
+        WatchFolderLabel.Text = LocalizationService.Get("settings_watch_desc");
+        WatchDirLabel.Text = LocalizationService.Get("settings_watch_dir") + ":";
+        BrowseWatchBtn.Content = LocalizationService.Get("settings_browse");
+
+        // General section
+        GeneralSectionHeader.Text = LocalizationService.Get("settings_general").ToUpperInvariant();
+        GeneralSectionDesc.Text = LocalizationService.Get("settings_general_desc");
+        CheckUpdatesLabel.Text = LocalizationService.Get("settings_check_updates");
+        MinimizeToTrayLabel.Text = LocalizationService.Get("settings_minimize_tray");
+
+        // About section
+        AboutSectionHeader.Text = LocalizationService.Get("settings_about").ToUpperInvariant();
+        AboutCopyrightText.Text = "\u00A9 " + LocalizationService.Get("about_copyright");
+        PatreonBtnText.Text = LocalizationService.Get("about_support");
+
+        // Footer buttons
+        ResetBtn.Content = LocalizationService.Get("settings_reset");
+        CancelBtn.Content = LocalizationService.Get("settings_cancel");
+        SaveBtn.Content = LocalizationService.Get("settings_save");
     }
 
     private void LoadSettings()
@@ -81,6 +139,53 @@ public partial class SettingsWindow : Window
         };
 
         return dialog.ShowDialog() == true ? dialog.FolderName : null;
+    }
+
+    private void ResetDefaults_Click(object sender, RoutedEventArgs e)
+    {
+        var result = MessageBox.Show(
+            "Reset all settings to their default values?",
+            "Reset to Defaults",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes) return;
+
+        // Reset to default values
+        var defaults = new AppSettings();
+
+        UseCustomFolderCheck.IsChecked = false;
+        CustomFolderBox.Text = "";
+        BackupDirBox.Text = defaults.BackupDirectory;
+        LibraryDirBox.Text = defaults.ModLibraryDirectory;
+        UseJunctionsCheck.IsChecked = defaults.UseJunctions;
+        WatchFolderCheck.IsChecked = defaults.WatchFolderEnabled;
+        WatchFolderBox.Text = defaults.WatchFolderPath;
+        CheckUpdatesCheck.IsChecked = defaults.CheckUpdatesOnStartup;
+        MinimizeToTrayCheck.IsChecked = defaults.MinimizeToTray;
+
+        // Reset language to English
+        foreach (ComboBoxItem item in LanguageCombo.Items)
+        {
+            if (item.Tag is string code && code == "en")
+            {
+                LanguageCombo.SelectedItem = item;
+                break;
+            }
+        }
+    }
+
+    private void Patreon_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://www.patreon.com/eedevv",
+                UseShellExecute = true
+            });
+        }
+        catch { }
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)

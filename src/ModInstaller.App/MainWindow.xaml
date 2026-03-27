@@ -57,12 +57,12 @@
                     <!-- Bottom buttons -->
                     <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,10">
                         <!-- Patreon / Donate -->
-                        <Button ToolTip="Support on Patreon" Click="Patreon_Click" Style="{DynamicResource NavButtonStyle}"
+                        <Button x:Name="NavPatreon" ToolTip="Support on Patreon" Click="Patreon_Click" Style="{DynamicResource NavButtonStyle}"
                                 Margin="8,2">
                             <TextBlock Text="&#x2764;" FontSize="16" Foreground="#FFF96854" />
                         </Button>
                         <!-- Settings -->
-                        <Button ToolTip="Settings" Click="SettingsButton_Click" Style="{DynamicResource NavButtonStyle}">
+                        <Button x:Name="NavSettings" ToolTip="Settings" Click="SettingsButton_Click" Style="{DynamicResource NavButtonStyle}">
                             <Path Data="{DynamicResource IconSettings}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
                         </Button>
@@ -84,23 +84,23 @@
                                 </Border>
                             </Grid>
                         </Button>
-                        <Button ToolTip="Backups" Click="NavButton_Click" Tag="Backups" Style="{DynamicResource NavButtonStyle}">
+                        <Button x:Name="NavBackups" ToolTip="Backups" Click="NavButton_Click" Tag="Backups" Style="{DynamicResource NavButtonStyle}">
                             <Path Data="{DynamicResource IconBackup}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
                         </Button>
-                        <Button ToolTip="Profiles" Click="NavButton_Click" Tag="Profiles" Style="{DynamicResource NavButtonStyle}">
+                        <Button x:Name="NavProfiles" ToolTip="Profiles" Click="NavButton_Click" Tag="Profiles" Style="{DynamicResource NavButtonStyle}">
                             <Path Data="{DynamicResource IconProfile}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
                         </Button>
-                        <Button ToolTip="Conflicts" Click="NavButton_Click" Tag="Conflicts" Style="{DynamicResource NavButtonStyle}">
+                        <Button x:Name="NavConflicts" ToolTip="Conflicts" Click="NavButton_Click" Tag="Conflicts" Style="{DynamicResource NavButtonStyle}">
                             <Path Data="{DynamicResource IconConflict}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
                         </Button>
-                        <Button ToolTip="Health" Click="NavButton_Click" Tag="Health" Style="{DynamicResource NavButtonStyle}">
+                        <Button x:Name="NavHealth" ToolTip="Health" Click="NavButton_Click" Tag="Health" Style="{DynamicResource NavButtonStyle}">
                             <Path Data="{DynamicResource IconHealth}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" Fill="Transparent" />
                         </Button>
-                        <Button ToolTip="Analytics" Click="NavButton_Click" Tag="Analytics" Style="{DynamicResource NavButtonStyle}">
+                        <Button x:Name="NavAnalytics" ToolTip="Analytics" Click="NavButton_Click" Tag="Analytics" Style="{DynamicResource NavButtonStyle}">
                             <Path Data="{DynamicResource IconAnalytics}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1.5" Width="18" Height="18" Stretch="Uniform" />
                         </Button>
@@ -145,9 +145,9 @@
                         </ComboBox>
 
                         <!-- Search bar -->
-                        <TextBox Grid.Column="1" Style="{DynamicResource AnimatedSearchBox}"
+                        <TextBox x:Name="SearchBox" Grid.Column="1" Style="{DynamicResource AnimatedSearchBox}"
                                  Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="16,0" VerticalAlignment="Center" />
+                                 Margin="16,0" VerticalAlignment="Center" Tag="Search mods..." />
 
                         <!-- Stats badges -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
@@ -184,7 +184,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <Path Data="{DynamicResource IconInstall}" Stroke="White" StrokeThickness="1.8"
                                       Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" />
-                                <TextBlock Text="Install" VerticalAlignment="Center" />
+                                <TextBlock x:Name="InstallButtonText" Text="Install" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </Grid>
@@ -230,13 +230,11 @@
                                         </Border.Effect>
                                         <Image Source="{DynamicResource AppIconDrawing}" Opacity="0.5" />
                                     </Border>
-                                    <TextBlock Text="No mods found" FontSize="22" FontWeight="Light"
+                                    <TextBlock x:Name="NoModsFoundText" Text="No mods found" FontSize="22" FontWeight="Light"
                                                Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                    <TextBlock FontSize="13" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
-                                               TextAlignment="Center" LineHeight="22">
-                                        <Run Text="Drag and drop files here, or click " />
-                                        <Run Text="Install" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
-                                    </TextBlock>
+                                    <TextBlock x:Name="DragDropHintText" FontSize="13" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
+                                               TextAlignment="Center" LineHeight="22"
+                                               Text="Drag and drop files here, or click Install" />
                                     <Border Background="#10FFFFFF" CornerRadius="8" Padding="14,6" Margin="0,16,0,0">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
                                                    Text=".zip    .7z    .rar    folders" HorizontalAlignment="Center" />
@@ -255,16 +253,16 @@
                             <DataGrid.ContextMenu>
                                 <ContextMenu Background="#FF1A2030" BorderBrush="#20FFFFFF" BorderThickness="1"
                                               Foreground="{DynamicResource TextPrimaryBrush}">
-                                    <MenuItem Header="Toggle Enable/Disable" Click="ContextToggle_Click" />
-                                    <MenuItem Header="Open Folder" Click="OpenFolderButton_Click" />
-                                    <MenuItem Header="Add/Edit Note" Click="ContextAddNote_Click" />
+                                    <MenuItem x:Name="CtxToggle" Header="Toggle Enable/Disable" Click="ContextToggle_Click" />
+                                    <MenuItem x:Name="CtxOpenFolder" Header="Open Folder" Click="OpenFolderButton_Click" />
+                                    <MenuItem x:Name="CtxAddNote" Header="Add/Edit Note" Click="ContextAddNote_Click" />
                                     <Separator Background="#15FFFFFF" />
                                     <MenuItem Header="Add to Group" x:Name="GroupsMenuItem" />
                                     <Separator Background="#15FFFFFF" />
-                                    <MenuItem Header="Enable All Selected" Click="ContextEnableAll_Click" />
-                                    <MenuItem Header="Disable All Selected" Click="ContextDisableAll_Click" />
+                                    <MenuItem x:Name="CtxEnableAll" Header="Enable All Selected" Click="ContextEnableAll_Click" />
+                                    <MenuItem x:Name="CtxDisableAll" Header="Disable All Selected" Click="ContextDisableAll_Click" />
                                     <Separator Background="#15FFFFFF" />
-                                    <MenuItem Header="Uninstall (with backup)" Click="ContextUninstall_Click" Foreground="{DynamicResource ErrorBrush}" />
+                                    <MenuItem x:Name="CtxUninstall" Header="Uninstall (with backup)" Click="ContextUninstall_Click" Foreground="{DynamicResource ErrorBrush}" />
                                 </ContextMenu>
                             </DataGrid.ContextMenu>
 
@@ -277,7 +275,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="NAME" Binding="{Binding DisplayName}" Width="*">
+                                <DataGridTextColumn x:Name="ColName" Header="NAME" Binding="{Binding DisplayName}" Width="*">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="FontWeight" Value="Medium" />
@@ -285,7 +283,7 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTemplateColumn Header="TYPE" Width="110">
+                                <DataGridTemplateColumn x:Name="ColType" Header="TYPE" Width="110">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Background="#10FFFFFF" CornerRadius="6" Padding="8,3"
@@ -296,7 +294,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="VERSION" Binding="{Binding Version}" Width="80">
+                                <DataGridTextColumn x:Name="ColVersion" Header="VERSION" Binding="{Binding Version}" Width="80">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
@@ -306,7 +304,7 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTextColumn Header="SIZE" Binding="{Binding SizeDisplay}" Width="75">
+                                <DataGridTextColumn x:Name="ColSize" Header="SIZE" Binding="{Binding SizeDisplay}" Width="75">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
@@ -316,7 +314,7 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTemplateColumn Header="STATUS" Width="90">
+                                <DataGridTemplateColumn x:Name="ColStatus" Header="STATUS" Width="90">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border CornerRadius="10" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Center">
@@ -385,7 +383,7 @@
                                     <StackPanel Visibility="{Binding SelectedMod, Converter={StaticResource NullToVisibilityConverter}}"
                                                 Margin="0,80,0,0" HorizontalAlignment="Center">
                                         <Ellipse Width="48" Height="48" Fill="#08FFFFFF" HorizontalAlignment="Center" Margin="0,0,0,14" />
-                                        <TextBlock Text="Select a mod" FontSize="14" Foreground="{DynamicResource TextMutedBrush}"
+                                        <TextBlock x:Name="SelectModText" Text="Select a mod" FontSize="14" Foreground="{DynamicResource TextMutedBrush}"
                                                    HorizontalAlignment="Center" />
                                         <TextBlock Text="to view details" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
                                                    HorizontalAlignment="Center" Opacity="0.5" Margin="0,2,0,0" />
@@ -461,7 +459,7 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <Path Data="{DynamicResource IconToggle}" Stroke="White" StrokeThickness="1.8"
                                                       Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" />
-                                                <TextBlock Text="Toggle Enable / Disable" />
+                                                <TextBlock x:Name="ToggleButtonText" Text="Toggle Enable / Disable" />
                                             </StackPanel>
                                         </Button>
                                         <Button Style="{DynamicResource AnimatedSecondaryButton}" Margin="0,0,0,8" HorizontalAlignment="Stretch"
@@ -469,7 +467,7 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <Path Data="{DynamicResource IconFolder}" Stroke="{DynamicResource TextPrimaryBrush}" StrokeThickness="1.5"
                                                       Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" />
-                                                <TextBlock Text="Open Folder" />
+                                                <TextBlock x:Name="OpenFolderButtonText" Text="Open Folder" />
                                             </StackPanel>
                                         </Button>
                                         <Button Style="{DynamicResource AnimatedDangerButton}" HorizontalAlignment="Stretch"
@@ -478,7 +476,7 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <Path Data="{DynamicResource IconDelete}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                       StrokeThickness="1.5" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" />
-                                                <TextBlock Text="Uninstall" />
+                                                <TextBlock x:Name="UninstallButtonText" Text="Uninstall" />
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>

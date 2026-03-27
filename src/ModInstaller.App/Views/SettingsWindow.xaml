@@ -2,12 +2,46 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Settings"
-        Height="680" Width="620"
+        Height="780" Width="640"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BackgroundDarkBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}"
         FontFamily="Segoe UI"
         ResizeMode="NoResize">
+
+    <Window.Resources>
+        <!-- Toggle Switch Style for CheckBox -->
+        <Style x:Key="ToggleSwitchStyle" TargetType="CheckBox">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Grid Width="44" Height="24" Cursor="Hand">
+                                <Border x:Name="Track" CornerRadius="12" Background="#FF30363D"
+                                        BorderBrush="#FF484F58" BorderThickness="1" />
+                                <Border x:Name="Thumb" Width="18" Height="18" CornerRadius="9"
+                                        Background="#FF8B949E" HorizontalAlignment="Left" Margin="3,3,0,3"
+                                        VerticalAlignment="Center" />
+                            </Grid>
+                            <ContentPresenter Margin="10,0,0,0" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="#1858A6FF" />
+                                <Setter TargetName="Track" Property="BorderBrush" Value="#FF58A6FF" />
+                                <Setter TargetName="Thumb" Property="Background" Value="#FF58A6FF" />
+                                <Setter TargetName="Thumb" Property="Margin" Value="23,3,0,3" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="BorderBrush" Value="#FF58A6FF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -16,15 +50,29 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <TextBlock Grid.Row="0" Text="Settings" FontSize="22" FontWeight="Bold" Margin="0,0,0,20" />
+        <!-- Header with icon -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+            <Border Width="40" Height="40" CornerRadius="10" Background="#1558A6FF" Margin="0,0,14,0"
+                    VerticalAlignment="Center">
+                <TextBlock Text="&#x2699;" FontSize="22" Foreground="#FF58A6FF"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="SettingsTitleText" Text="Settings" FontSize="22" FontWeight="Bold" />
+                <TextBlock x:Name="SettingsSubtitleText" Text="Configure your mod manager preferences"
+                           FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,0" />
+            </StackPanel>
+        </StackPanel>
 
         <!-- Settings Content -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
+
                 <!-- Language Section -->
-                <TextBlock Text="LANGUAGE" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                <TextBlock x:Name="LangSectionHeader" Text="LANGUAGE" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                <TextBlock x:Name="LangSectionDesc" Text="Select your preferred interface language"
+                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,8" />
 
                 <Border Background="{DynamicResource BackgroundMediumBrush}" CornerRadius="8"
                         Padding="16" Margin="0,0,0,20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
@@ -33,21 +81,30 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Interface language:" Foreground="{DynamicResource TextSecondaryBrush}"
-                                   VerticalAlignment="Center" Margin="0,0,12,0" FontSize="13" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="&#x1F310;" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock x:Name="InterfaceLangLabel" Text="Interface language:"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" FontSize="13" />
+                        </StackPanel>
                         <ComboBox x:Name="LanguageCombo" Grid.Column="1" Style="{DynamicResource GlassComboBox}" />
                     </Grid>
                 </Border>
 
                 <!-- Community Folder Section -->
-                <TextBlock Text="COMMUNITY FOLDER" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                <TextBlock x:Name="CommunitySectionHeader" Text="COMMUNITY FOLDER" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                <TextBlock x:Name="CommunitySectionDesc" Text="Configure where MSFS stores Community mods"
+                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,8" />
 
                 <Border Background="{DynamicResource BackgroundMediumBrush}" CornerRadius="8"
                         Padding="16" Margin="0,0,0,20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <StackPanel>
-                        <CheckBox x:Name="UseCustomFolderCheck" Content="Use custom Community folder"
-                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                        <CheckBox x:Name="UseCustomFolderCheck" Style="{StaticResource ToggleSwitchStyle}"
+                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10">
+                            <TextBlock x:Name="UseCustomFolderLabel" Text="Use custom Community folder"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </CheckBox>
 
                         <Grid Margin="0,4,0,0">
                             <Grid.ColumnDefinitions>
@@ -56,7 +113,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="CustomFolderBox" Style="{DynamicResource AnimatedSearchBox}"
                                      IsEnabled="{Binding IsChecked, ElementName=UseCustomFolderCheck}" />
-                            <Button Grid.Column="1" Content="Browse" Style="{DynamicResource AnimatedSecondaryButton}"
+                            <Button x:Name="BrowseCustomBtn" Grid.Column="1" Content="Browse" Style="{DynamicResource AnimatedSecondaryButton}"
                                     Click="BrowseCustomFolder_Click" Margin="8,0,0,0"
                                     IsEnabled="{Binding IsChecked, ElementName=UseCustomFolderCheck}" />
                         </Grid>
@@ -64,13 +121,16 @@
                 </Border>
 
                 <!-- Backup Section -->
-                <TextBlock Text="BACKUPS" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                <TextBlock x:Name="BackupSectionHeader" Text="BACKUPS" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                <TextBlock x:Name="BackupSectionDesc" Text="Configure backup storage location"
+                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,8" />
 
                 <Border Background="{DynamicResource BackgroundMediumBrush}" CornerRadius="8"
                         Padding="16" Margin="0,0,0,20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <StackPanel>
-                        <TextBlock Text="Backup directory:" Foreground="{DynamicResource TextSecondaryBrush}"
+                        <TextBlock x:Name="BackupDirLabel" Text="Backup directory:"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="0,0,0,4" FontSize="12" />
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -78,24 +138,30 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="BackupDirBox" Style="{DynamicResource AnimatedSearchBox}" />
-                            <Button Grid.Column="1" Content="Browse" Style="{DynamicResource AnimatedSecondaryButton}"
+                            <Button x:Name="BrowseBackupBtn" Grid.Column="1" Content="Browse" Style="{DynamicResource AnimatedSecondaryButton}"
                                     Click="BrowseBackupDir_Click" Margin="8,0,0,0" />
                         </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- Mod Library Section -->
-                <TextBlock Text="MOD LIBRARY" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                <TextBlock x:Name="LibrarySectionHeader" Text="MOD LIBRARY" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                <TextBlock x:Name="LibrarySectionDesc" Text="Manage mod library and junction settings"
+                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,8" />
 
                 <Border Background="{DynamicResource BackgroundMediumBrush}" CornerRadius="8"
                         Padding="16" Margin="0,0,0,20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <StackPanel>
-                        <CheckBox x:Name="UseJunctionsCheck"
-                                  Content="Use junctions (recommended — saves disk space, instant enable/disable)"
-                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                        <CheckBox x:Name="UseJunctionsCheck" Style="{StaticResource ToggleSwitchStyle}"
+                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10">
+                            <TextBlock x:Name="UseJunctionsLabel"
+                                       Text="Use junctions (recommended -- saves disk space, instant enable/disable)"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                        </CheckBox>
 
-                        <TextBlock Text="Library directory:" Foreground="{DynamicResource TextSecondaryBrush}"
+                        <TextBlock x:Name="LibraryDirLabel" Text="Library directory:"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="0,4,0,4" FontSize="12" />
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -103,24 +169,29 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="LibraryDirBox" Style="{DynamicResource AnimatedSearchBox}" />
-                            <Button Grid.Column="1" Content="Browse" Style="{DynamicResource AnimatedSecondaryButton}"
+                            <Button x:Name="BrowseLibraryBtn" Grid.Column="1" Content="Browse" Style="{DynamicResource AnimatedSecondaryButton}"
                                     Click="BrowseLibraryDir_Click" Margin="8,0,0,0" />
                         </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- Watch Folder Section -->
-                <TextBlock Text="WATCH FOLDER" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                <TextBlock x:Name="WatchSectionHeader" Text="WATCH FOLDER" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                <TextBlock x:Name="WatchSectionDesc" Text="Auto-detect new mods from a folder"
+                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,8" />
 
                 <Border Background="{DynamicResource BackgroundMediumBrush}" CornerRadius="8"
                         Padding="16" Margin="0,0,0,20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <StackPanel>
-                        <CheckBox x:Name="WatchFolderCheck"
-                                  Content="Monitor folder for new mod archives"
-                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                        <CheckBox x:Name="WatchFolderCheck" Style="{StaticResource ToggleSwitchStyle}"
+                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10">
+                            <TextBlock x:Name="WatchFolderLabel" Text="Monitor folder for new mod archives"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </CheckBox>
 
-                        <TextBlock Text="Watch directory:" Foreground="{DynamicResource TextSecondaryBrush}"
+                        <TextBlock x:Name="WatchDirLabel" Text="Watch directory:"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="0,0,0,4" FontSize="12" />
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -129,7 +200,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="WatchFolderBox" Style="{DynamicResource AnimatedSearchBox}"
                                      IsEnabled="{Binding IsChecked, ElementName=WatchFolderCheck}" />
-                            <Button Grid.Column="1" Content="Browse" Style="{DynamicResource AnimatedSecondaryButton}"
+                            <Button x:Name="BrowseWatchBtn" Grid.Column="1" Content="Browse" Style="{DynamicResource AnimatedSecondaryButton}"
                                     Click="BrowseWatchFolder_Click" Margin="8,0,0,0"
                                     IsEnabled="{Binding IsChecked, ElementName=WatchFolderCheck}" />
                         </Grid>
@@ -137,29 +208,86 @@
                 </Border>
 
                 <!-- General Section -->
-                <TextBlock Text="GENERAL" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                <TextBlock x:Name="GeneralSectionHeader" Text="GENERAL" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                <TextBlock x:Name="GeneralSectionDesc" Text="Application behavior and update preferences"
+                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,8" />
 
                 <Border Background="{DynamicResource BackgroundMediumBrush}" CornerRadius="8"
                         Padding="16" Margin="0,0,0,20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <StackPanel>
-                        <CheckBox x:Name="CheckUpdatesCheck"
-                                  Content="Check for mod updates on startup"
-                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
-                        <CheckBox x:Name="MinimizeToTrayCheck"
-                                  Content="Minimize to system tray"
-                                  Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <CheckBox x:Name="CheckUpdatesCheck" Style="{StaticResource ToggleSwitchStyle}"
+                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10">
+                            <TextBlock x:Name="CheckUpdatesLabel" Text="Check for mod updates on startup"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </CheckBox>
+                        <CheckBox x:Name="MinimizeToTrayCheck" Style="{StaticResource ToggleSwitchStyle}"
+                                  Foreground="{DynamicResource TextPrimaryBrush}">
+                            <TextBlock x:Name="MinimizeToTrayLabel" Text="Minimize to system tray"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </CheckBox>
                     </StackPanel>
                 </Border>
+
+                <!-- About Section -->
+                <TextBlock x:Name="AboutSectionHeader" Text="ABOUT" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+
+                <Border Background="{DynamicResource BackgroundMediumBrush}" CornerRadius="8"
+                        Padding="16" Margin="0,0,0,10" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Border Width="36" Height="36" CornerRadius="8" Background="#1558A6FF" Margin="0,0,12,0">
+                                <TextBlock Text="&#x2708;" FontSize="18" Foreground="#FF58A6FF"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="MSFS Mod Manager" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock x:Name="AboutVersionText" Text="Version 3.0.0" FontSize="11"
+                                           Foreground="{DynamicResource TextMutedBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border Height="1" Background="#10FFFFFF" Margin="0,4,0,10" />
+
+                        <TextBlock x:Name="AboutCopyrightText" Text="&#x00A9; 2026 @eedev. All rights reserved."
+                                   FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,10" />
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="PatreonBtn" Style="{DynamicResource AnimatedSecondaryButton}"
+                                    Click="Patreon_Click" Padding="12,6" Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x2764;" Foreground="#FFF96854" Margin="0,0,6,0" />
+                                    <TextBlock x:Name="PatreonBtnText" Text="Support on Patreon" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 
         <!-- Footer buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="Cancel" Style="{DynamicResource AnimatedSecondaryButton}"
+        <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button x:Name="ResetBtn" Grid.Column="0" Content="Reset to Defaults"
+                    Style="{DynamicResource AnimatedSecondaryButton}"
+                    Click="ResetDefaults_Click" Padding="14,8"
+                    Foreground="{DynamicResource TextSecondaryBrush}" />
+
+            <Button x:Name="CancelBtn" Grid.Column="2" Content="Cancel"
+                    Style="{DynamicResource AnimatedSecondaryButton}"
                     Click="Cancel_Click" Margin="0,0,8,0" Width="100" />
-            <Button Content="Save" Style="{DynamicResource AnimatedPrimaryButton}"
+            <Button x:Name="SaveBtn" Grid.Column="3" Content="Save"
+                    Style="{DynamicResource AnimatedPrimaryButton}"
                     Click="Save_Click" Width="100" />
-        </StackPanel>
+        </Grid>
     </Grid>
 </Window>

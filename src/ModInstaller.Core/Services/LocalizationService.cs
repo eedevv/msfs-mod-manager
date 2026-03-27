@@ -128,7 +128,27 @@ namespace ModInstaller.Core.Services
                 ["cancel"] = "Cancel",
                 ["refresh"] = "Refresh",
                 ["donate"] = "Donate",
-                ["copyright"] = "All rights reserved"
+                ["copyright"] = "All rights reserved",
+                ["settings_reset"] = "Reset to Defaults",
+                ["settings_about"] = "About",
+                ["settings_watch_folder"] = "Watch Folder",
+                ["settings_watch_desc"] = "Monitor a folder for new mod archives",
+                ["settings_watch_dir"] = "Watch directory",
+                ["settings_minimize_tray"] = "Minimize to system tray",
+                ["settings_community_desc"] = "Configure where MSFS stores Community mods",
+                ["settings_backups_desc"] = "Configure backup storage location",
+                ["settings_library_desc"] = "Manage mod library and junction settings",
+                ["settings_general_desc"] = "Application behavior and update preferences",
+                ["settings_language_desc"] = "Select your preferred interface language",
+                ["settings_watch_folder_desc"] = "Auto-detect new mods from a folder",
+                ["settings_interface_lang"] = "Interface language",
+                ["settings_library_dir"] = "Library directory",
+                ["about_version"] = "Version",
+                ["about_copyright"] = "2026 @eedev. All rights reserved.",
+                ["about_website"] = "Website",
+                ["about_github"] = "GitHub",
+                ["toggle_enable_disable"] = "Toggle Enable / Disable",
+                ["uninstall_mod"] = "Uninstall"
             },
 
             // ─── German ────────────────────────────────────────────────
@@ -1438,9 +1458,23 @@ namespace ModInstaller.Core.Services
         /// <summary>
         /// Sets the active language. If the language code is not supported, defaults to English.
         /// </summary>
+        /// <summary>
+        /// Event raised when language changes so UI can refresh.
+        /// </summary>
+        public static event Action? LanguageChanged;
+
         public static void SetLanguage(string langCode)
         {
-            _currentLanguage = Translations.ContainsKey(langCode) ? langCode : "en";
+            var newLang = Translations.ContainsKey(langCode) ? langCode : "en";
+            if (newLang != _currentLanguage)
+            {
+                _currentLanguage = newLang;
+                LanguageChanged?.Invoke();
+            }
+            else
+            {
+                _currentLanguage = newLang;
+            }
         }
 
         /// <summary>
@@ -1452,5 +1486,17 @@ namespace ModInstaller.Core.Services
         /// Returns a dictionary of available language codes mapped to their native names.
         /// </summary>
         public static Dictionary<string, string> GetAvailableLanguages() => new(LanguageNames);
+
+        /// <summary>
+        /// Gets a translated string for the given key. Falls back to English, then the key itself.
+        /// </summary>
+        public static string Get(string key)
+        {
+            if (Translations.TryGetValue(_currentLanguage, out var langDict) && langDict.TryGetValue(key, out var val))
+                return val;
+            if (Translations.TryGetValue("en", out var enDict) && enDict.TryGetValue(key, out var enVal))
+                return enVal;
+            return key;
+        }
     }
 }

@@ -21,6 +21,10 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
 
+        // Apply localization on load and when language changes
+        Loaded += (_, _) => ApplyLocalization();
+        LocalizationService.LanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+
         // Keyboard shortcuts
         InputBindings.Add(new KeyBinding(new RelayShortcut(() => ViewModel.CurrentPage = "Mods"), Key.D1, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayShortcut(() => { ViewModel.CurrentPage = "Backups"; LazyInitPage("Backups"); }), Key.D2, ModifierKeys.Control));
@@ -288,6 +292,54 @@ public partial class MainWindow : Window
     private void ShowToast(string title, string message, ToastNotification.ToastType type)
     {
         Toast.Show(title, message, type);
+    }
+
+    // ── Localization ──
+
+    private void ApplyLocalization()
+    {
+        // Install button
+        InstallButtonText.Text = LocalizationService.Get("install_button");
+
+        // Empty state
+        NoModsFoundText.Text = LocalizationService.Get("no_mods_found");
+        DragDropHintText.Text = LocalizationService.Get("drag_drop_hint");
+
+        // Detail sidebar
+        SelectModText.Text = LocalizationService.Get("select_mod");
+
+        // Search placeholder
+        SearchBox.Tag = LocalizationService.Get("search_placeholder");
+
+        // DataGrid column headers
+        ColName.Header = LocalizationService.Get("name").ToUpperInvariant();
+        ColType.Header = LocalizationService.Get("type").ToUpperInvariant();
+        ColVersion.Header = LocalizationService.Get("version").ToUpperInvariant();
+        ColSize.Header = LocalizationService.Get("size").ToUpperInvariant();
+        ColStatus.Header = LocalizationService.Get("status").ToUpperInvariant();
+
+        // Context menu
+        CtxToggle.Header = LocalizationService.Get("enable") + " / " + LocalizationService.Get("disable");
+        CtxOpenFolder.Header = LocalizationService.Get("open_folder");
+        CtxAddNote.Header = LocalizationService.Get("add_note");
+        CtxEnableAll.Header = LocalizationService.Get("enable_all");
+        CtxDisableAll.Header = LocalizationService.Get("disable_all");
+        CtxUninstall.Header = LocalizationService.Get("uninstall");
+
+        // Nav tooltips
+        NavMods.ToolTip = LocalizationService.Get("nav_mods");
+        NavBackups.ToolTip = LocalizationService.Get("nav_backups");
+        NavProfiles.ToolTip = LocalizationService.Get("nav_profiles");
+        NavConflicts.ToolTip = LocalizationService.Get("nav_conflicts");
+        NavHealth.ToolTip = LocalizationService.Get("nav_health");
+        NavAnalytics.ToolTip = LocalizationService.Get("nav_analytics");
+        NavSettings.ToolTip = LocalizationService.Get("nav_settings");
+        NavPatreon.ToolTip = LocalizationService.Get("about_support");
+
+        // Sidebar action buttons
+        ToggleButtonText.Text = LocalizationService.Get("toggle_enable_disable");
+        OpenFolderButtonText.Text = LocalizationService.Get("open_folder");
+        UninstallButtonText.Text = LocalizationService.Get("uninstall_mod");
     }
 
     // ── Navigation ──

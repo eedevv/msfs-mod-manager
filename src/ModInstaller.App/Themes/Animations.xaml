@@ -303,7 +303,7 @@
                         </Border.Effect>
                         <Grid>
                             <!-- Placeholder text -->
-                            <TextBlock x:Name="Placeholder" Text="Search mods..."
+                            <TextBlock x:Name="Placeholder" Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, FallbackValue='Search mods...', TargetNullValue='Search mods...'}"
                                        Foreground="#FF484F58" IsHitTestVisible="False"
                                        Visibility="Collapsed" VerticalAlignment="Center" />
                             <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" />
