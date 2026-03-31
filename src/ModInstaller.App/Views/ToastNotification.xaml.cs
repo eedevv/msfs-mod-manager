@@ -9,6 +9,7 @@ public partial class ToastNotification : UserControl
 {
     private readonly Storyboard _showStoryboard;
     private readonly Storyboard _hideStoryboard;
+    private System.Windows.Threading.DispatcherTimer? _autoHideTimer;
 
     public enum ToastType { Success, Error, Warning, Info }
 
@@ -24,7 +25,7 @@ public partial class ToastNotification : UserControl
     {
         TitleText.Text = title;
         MessageText.Text = message;
-        MessageText.Visibility = string.IsNullOrEmpty(message) ? Visibility.Collapsed : Visibility.Visible;
+        MessageText.Visibility = string.IsNullOrWhiteSpace(message) ? Visibility.Collapsed : Visibility.Visible;
 
         // Set icon and color based on type
         var (icon, color) = type switch
@@ -46,19 +47,20 @@ public partial class ToastNotification : UserControl
         // Play show animation
         _showStoryboard.Begin(this);
 
-        // Auto-hide after delay
+        // Auto-hide after delay — cancel any previous timer first
+        _autoHideTimer?.Stop();
         if (autoHideMs > 0)
         {
-            var timer = new System.Windows.Threading.DispatcherTimer
+            _autoHideTimer = new System.Windows.Threading.DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(autoHideMs)
             };
-            timer.Tick += (_, _) =>
+            _autoHideTimer.Tick += (_, _) =>
             {
-                timer.Stop();
+                _autoHideTimer.Stop();
                 Hide();
             };
-            timer.Start();
+            _autoHideTimer.Start();
         }
     }
 

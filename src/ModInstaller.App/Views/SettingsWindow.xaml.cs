@@ -19,6 +19,11 @@ public partial class SettingsWindow : Window
         ApplyLocalization();
     }
 
+    private void TitleBar_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        try { DragMove(); } catch (InvalidOperationException) { }
+    }
+
     private void ApplyLocalization()
     {
         // Window title
@@ -224,7 +229,7 @@ public partial class SettingsWindow : Window
         }
 
         _settings.BackupDirectory = BackupDirBox.Text.Trim();
-        _settings.ModLibraryDirectory = LibraryDirBox.Text;
+        _settings.ModLibraryDirectory = LibraryDirBox.Text.Trim();
         _settings.UseJunctions = UseJunctionsCheck.IsChecked == true;
         _settings.CheckUpdatesOnStartup = CheckUpdatesCheck.IsChecked == true;
 

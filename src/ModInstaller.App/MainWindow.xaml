@@ -6,9 +6,11 @@
         Title="{Binding WindowTitle}"
         Height="760" Width="1340" MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource BrandBackgroundGradient}"
+        WindowStyle="None"
+        Background="Transparent"
         Foreground="{DynamicResource TextPrimaryBrush}"
         FontFamily="Segoe UI"
+        AllowsTransparency="True"
         AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver" DragLeave="Window_DragLeave">
 
     <Window.DataContext>
@@ -25,17 +27,92 @@
         </EventTrigger>
     </Window.Triggers>
 
-    <Grid>
-        <!-- Background layers -->
-        <Rectangle Fill="{DynamicResource BrandGridPattern}" IsHitTestVisible="False" />
-        <Image Source="{DynamicResource BrandCompassRose}" Width="350" Height="350" Opacity="0.015"
-               HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-50,-50,0" IsHitTestVisible="False" />
-
+    <Border Background="{DynamicResource BrandBackgroundGradient}" CornerRadius="8"
+            BorderBrush="#20FFFFFF" BorderThickness="1">
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="64" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="36" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- ═══════════ CUSTOM TITLE BAR ═══════════ -->
+            <Border Grid.Row="0" Background="#FF060A10" CornerRadius="8,8,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- App icon + title -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <Border Width="18" Height="18" Margin="0,0,8,0">
+                            <Image Source="{DynamicResource AppIconDrawing}" />
+                        </Border>
+                        <TextBlock x:Name="TitleBarText" Text="MSFS Mod Manager" FontSize="12" FontWeight="Medium"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text=" v3.0" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                                   VerticalAlignment="Center" Margin="2,1,0,0" />
+                        <Border Background="#15FFFFFF" CornerRadius="3" Padding="6,2" Margin="10,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock x:Name="TitleBarSim" Text="{Binding WindowTitle}" FontSize="10"
+                                       Foreground="{DynamicResource AccentBrush}" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Window control buttons -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
+                        <Button Click="MinimizeButton_Click" Style="{DynamicResource TitleBarButton}" Content="─"
+                                ToolTip="Minimize" />
+                        <Button x:Name="MaximizeButton" Click="MaximizeButton_Click" Style="{DynamicResource TitleBarButton}" Content="□"
+                                ToolTip="Maximize" />
+                        <Button Click="CloseButton_Click" ToolTip="Close">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+                                    <Setter Property="BorderThickness" Value="0" />
+                                    <Setter Property="Width" Value="46" />
+                                    <Setter Property="FontSize" Value="13" />
+                                    <Setter Property="Cursor" Value="Hand" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bg" Background="{TemplateBinding Background}"
+                                                        CornerRadius="0,8,0,0">
+                                                    <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{TemplateBinding Foreground}" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bg" Property="Background" Value="#FFE81123" />
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ═══════════ MAIN CONTENT ═══════════ -->
+            <Grid Grid.Row="1">
+                <!-- Background layers -->
+                <Rectangle Fill="{DynamicResource BrandGridPattern}" IsHitTestVisible="False" />
+                <Image Source="{DynamicResource BrandCompassRose}" Width="350" Height="350" Opacity="0.015"
+                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-50,-50,0" IsHitTestVisible="False" />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="64" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
             <!-- ═══════════ NAVIGATION SIDEBAR ═══════════ -->
             <Border Grid.Column="0" Background="#FF080C12"
@@ -551,10 +628,12 @@
             </Border>
         </Border>
 
-        <!-- Toast -->
-        <views:ToastNotification x:Name="Toast" Panel.ZIndex="200" />
+            <!-- Toast -->
+            <views:ToastNotification x:Name="Toast" Panel.ZIndex="200" />
 
-        <!-- First-time walkthrough overlay -->
-        <views:WalkthroughOverlay x:Name="Walkthrough" Panel.ZIndex="300" />
-    </Grid>
+            <!-- First-time walkthrough overlay -->
+            <views:WalkthroughOverlay x:Name="Walkthrough" Panel.ZIndex="300" />
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

@@ -3,58 +3,119 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="About" Height="460" Width="440"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource BrandBackgroundGradient}"
+        WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent"
         Foreground="{DynamicResource TextPrimaryBrush}"
         FontFamily="Segoe UI" ResizeMode="NoResize">
 
-    <Grid Margin="30">
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-            <!-- Icon -->
-            <Border Width="72" Height="72" Margin="0,0,0,20" HorizontalAlignment="Center">
-                <Border.Effect>
-                    <DropShadowEffect Color="#FF58A6FF" BlurRadius="20" ShadowDepth="0" Opacity="0.35" />
-                </Border.Effect>
-                <Image Source="{DynamicResource AppIconDrawing}" />
-            </Border>
+    <Border Background="{DynamicResource BrandBackgroundGradient}" CornerRadius="8"
+            BorderBrush="#20FFFFFF" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="36" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-            <TextBlock HorizontalAlignment="Center" FontSize="22" Margin="0,0,0,4">
-                <Run Text="MSFS" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
-                <Run Text=" Mod Manager" FontWeight="Light" />
-            </TextBlock>
-            <TextBlock Text="Version 3.0" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
-                       HorizontalAlignment="Center" Margin="0,0,0,20" />
+            <!-- ═══ Custom Title Bar ═══ -->
+            <Border Grid.Row="0" Background="#FF060A10" CornerRadius="8,8,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-            <!-- Glass info card -->
-            <Border CornerRadius="10" Padding="20,14"
-                    Background="{DynamicResource GlassPanelBrush}"
-                    BorderBrush="{DynamicResource GlassPanelBorderBrush}" BorderThickness="1"
-                    Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Built with .NET 8 + WPF" FontSize="12"
-                               Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                    <TextBlock Text="Compatible with MSFS 2020 and 2024" FontSize="11"
-                               Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
-                </StackPanel>
-            </Border>
-
-            <!-- Copyright -->
-            <TextBlock HorizontalAlignment="Center" FontSize="12" Margin="0,0,0,16"
-                       Foreground="{DynamicResource TextSecondaryBrush}">
-                <Run Text="&#x00A9; 2026 @eedev  —  All rights reserved" />
-            </TextBlock>
-
-            <!-- Buttons -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button Style="{DynamicResource AnimatedPrimaryButton}" Click="Patreon_Click"
-                        Margin="0,0,10,0" Padding="16,8">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x2764;" FontSize="14" Foreground="#FFF96854" Margin="0,0,8,0" />
-                        <TextBlock Text="Support on Patreon" />
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                        <TextBlock Text="&#x2139;" FontSize="14" Foreground="{DynamicResource AccentBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="About" FontSize="12" FontWeight="Medium"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                     </StackPanel>
-                </Button>
-                <Button Content="Close" Style="{DynamicResource AnimatedSecondaryButton}"
-                        Click="Close_Click" Width="90" Padding="14,8" />
-            </StackPanel>
-        </StackPanel>
-    </Grid>
+
+                    <Button Grid.Column="2" Click="Close_Click" ToolTip="Close">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Width" Value="46" />
+                                <Setter Property="Cursor" Value="Hand" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bg" Background="{TemplateBinding Background}"
+                                                    CornerRadius="0,8,0,0">
+                                                <TextBlock Text="&#x2715;" FontSize="12" HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{TemplateBinding Foreground}" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bg" Property="Background" Value="#FFE81123" />
+                                                    <Setter Property="Foreground" Value="White" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- ═══ Content ═══ -->
+            <Grid Grid.Row="1" Margin="30,20,30,30">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- Icon with glow -->
+                    <Border Width="72" Height="72" Margin="0,0,0,20" HorizontalAlignment="Center">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#FF58A6FF" BlurRadius="20" ShadowDepth="0" Opacity="0.35" />
+                        </Border.Effect>
+                        <Image Source="{DynamicResource AppIconDrawing}" />
+                    </Border>
+
+                    <TextBlock HorizontalAlignment="Center" FontSize="22" Margin="0,0,0,4">
+                        <Run Text="MSFS" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                        <Run Text=" Mod Manager" FontWeight="Light" />
+                    </TextBlock>
+                    <TextBlock Text="Version 3.0" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" Margin="0,0,0,20" />
+
+                    <!-- Glass info card -->
+                    <Border CornerRadius="10" Padding="20,14"
+                            Background="{DynamicResource GlassPanelBrush}"
+                            BorderBrush="{DynamicResource GlassPanelBorderBrush}" BorderThickness="1"
+                            Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="Built with .NET 8 + WPF" FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                            <TextBlock Text="Compatible with MSFS 2020 and 2024" FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Copyright -->
+                    <TextBlock HorizontalAlignment="Center" FontSize="12" Margin="0,0,0,16"
+                               Foreground="{DynamicResource TextSecondaryBrush}">
+                        <Run Text="&#x00A9; 2026 @eedev  —  All rights reserved" />
+                    </TextBlock>
+
+                    <!-- Buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Style="{DynamicResource AnimatedPrimaryButton}" Click="Patreon_Click"
+                                Margin="0,0,10,0" Padding="16,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#x2764;" FontSize="14" Foreground="#FFF96854" Margin="0,0,8,0" />
+                                <TextBlock Text="Support on Patreon" />
+                            </StackPanel>
+                        </Button>
+                        <Button Content="Close" Style="{DynamicResource AnimatedSecondaryButton}"
+                                Click="Close_Click" Width="90" Padding="14,8" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

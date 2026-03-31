@@ -14,6 +14,7 @@ public partial class MainWindow : Window
 {
     private MainViewModel ViewModel => (MainViewModel)DataContext;
     private readonly HashSet<string> _initializedPages = ["Mods"];
+    private readonly Action _localizationHandler;
 
     public MainWindow()
     {
@@ -23,7 +24,8 @@ public partial class MainWindow : Window
 
         // Apply localization on load and when language changes
         Loaded += (_, _) => ApplyLocalization();
-        LocalizationService.LanguageChanged += () => Dispatcher.Invoke(ApplyLocalization);
+        _localizationHandler = () => Dispatcher.Invoke(ApplyLocalization);
+        LocalizationService.LanguageChanged += _localizationHandler;
 
         // Keyboard shortcuts
         InputBindings.Add(new KeyBinding(new RelayShortcut(() => ViewModel.CurrentPage = "Mods"), Key.D1, ModifierKeys.Control));
@@ -32,8 +34,8 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(new RelayShortcut(() => { ViewModel.CurrentPage = "Conflicts"; LazyInitPage("Conflicts"); }), Key.D4, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayShortcut(() => { ViewModel.CurrentPage = "Health"; LazyInitPage("Health"); }), Key.D5, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayShortcut(() => { ViewModel.CurrentPage = "Analytics"; LazyInitPage("Analytics"); }), Key.D6, ModifierKeys.Control));
-        InputBindings.Add(new KeyBinding(new RelayShortcut(async () => { try { await ViewModel.RefreshModListAsync(); } catch { } }), Key.R, ModifierKeys.Control));
-        InputBindings.Add(new KeyBinding(new RelayShortcut(async () =>
+        InputBindings.Add(new KeyBinding(new RelayShortcut((Func<Task>)(async () => { try { await ViewModel.RefreshModListAsync(); } catch { } })), Key.R, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(new RelayShortcut((Func<Task>)(async () =>
         {
             try
             {
@@ -41,7 +43,7 @@ public partial class MainWindow : Window
                 ShowToast("Exported", "Mod list saved to Desktop", ToastNotification.ToastType.Success);
             }
             catch { }
-        }), Key.E, ModifierKeys.Control));
+        })), Key.E, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayShortcut(() => InstallButton_Click(this, new RoutedEventArgs())), Key.I, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayShortcut(() => ModGrid.SelectAll()), Key.A, ModifierKeys.Control));
     }
@@ -220,9 +222,56 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        LocalizationService.LanguageChanged -= _localizationHandler;
         _watchService?.Stop();
         _watchService?.Dispose();
         SaveWindowPosition();
+    }
+
+    // ── Custom Title Bar ──
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            MaximizeButton_Click(sender, e);
+        }
+        else
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                // Restore then drag
+                var point = PointToScreen(e.GetPosition(this));
+                WindowState = WindowState.Normal;
+                Left = point.X - (ActualWidth / 2);
+                Top = point.Y - 18;
+            }
+            try { DragMove(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized)
+        {
+            WindowState = WindowState.Normal;
+            MaximizeButton.Content = "□";
+        }
+        else
+        {
+            WindowState = WindowState.Maximized;
+            MaximizeButton.Content = "❐";
+        }
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
     }
 
     // ── Window Position ──
@@ -232,14 +281,28 @@ public partial class MainWindow : Window
         var s = ViewModel.Settings;
         if (s.WindowLeft >= 0 && s.WindowTop >= 0)
         {
-            Left = s.WindowLeft;
-            Top = s.WindowTop;
-            WindowStartupLocation = WindowStartupLocation.Manual;
+            // Clamp to virtual screen bounds so the window can't end up off-screen
+            // after a monitor is disconnected or resolution changes.
+            var vLeft = SystemParameters.VirtualScreenLeft;
+            var vTop = SystemParameters.VirtualScreenTop;
+            var vRight = vLeft + SystemParameters.VirtualScreenWidth;
+            var vBottom = vTop + SystemParameters.VirtualScreenHeight;
+
+            if (s.WindowLeft >= vLeft && s.WindowLeft < vRight - 100 &&
+                s.WindowTop >= vTop && s.WindowTop < vBottom - 40)
+            {
+                Left = s.WindowLeft;
+                Top = s.WindowTop;
+                WindowStartupLocation = WindowStartupLocation.Manual;
+            }
         }
         Width = s.WindowWidth;
         Height = s.WindowHeight;
         if (s.WindowMaximized)
+        {
             WindowState = WindowState.Maximized;
+            MaximizeButton.Content = "❐";
+        }
     }
 
     private void SaveWindowPosition()
@@ -365,15 +428,14 @@ public partial class MainWindow : Window
 
     private async void ModGrid_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (ViewModel.SelectedMod != null)
-        {
-            await ViewModel.ToggleModAsync(ViewModel.SelectedMod);
-            var action = ViewModel.SelectedMod.Status == ModStatus.Enabled ? "Enabled" : "Disabled";
-            ShowToast(action, ViewModel.SelectedMod.DisplayName,
-                ViewModel.SelectedMod.Status == ModStatus.Enabled
-                    ? ToastNotification.ToastType.Success
-                    : ToastNotification.ToastType.Warning);
-        }
+        var mod = ViewModel.SelectedMod;
+        if (mod == null) return;
+        await ViewModel.ToggleModAsync(mod);
+        var action = mod.Status == ModStatus.Enabled ? "Enabled" : "Disabled";
+        ShowToast(action, mod.DisplayName,
+            mod.Status == ModStatus.Enabled
+                ? ToastNotification.ToastType.Success
+                : ToastNotification.ToastType.Warning);
     }
 
     // ── Actions ──
@@ -392,9 +454,7 @@ public partial class MainWindow : Window
             int ok = 0, fail = 0;
             foreach (var file in dialog.FileNames)
             {
-                var before = ViewModel.TotalModCount;
-                await ViewModel.InstallFromPathAsync(file);
-                if (ViewModel.TotalModCount > before) ok++;
+                if (await ViewModel.InstallFromPathAsync(file)) ok++;
                 else fail++;
             }
 
@@ -414,7 +474,7 @@ public partial class MainWindow : Window
         {
             await ViewModel.SaveSettingsAsync();
             await ViewModel.RefreshModListAsync();
-            ShowToast("Settings Saved", "", ToastNotification.ToastType.Success);
+            ShowToast("Settings Saved", "Changes applied", ToastNotification.ToastType.Success);
         }
     }
 
@@ -505,7 +565,7 @@ public partial class MainWindow : Window
             .Where(m => m.Status == ModStatus.Disabled).ToList();
         if (selected.Count == 0) return;
 
-        int count = 0;
+        int count = 0, fail = 0;
         foreach (var mod in selected)
         {
             try
@@ -513,10 +573,13 @@ public partial class MainWindow : Window
                 if (ViewModel.Installer != null)
                 { await ViewModel.Installer.EnableModAsync(mod, ViewModel.CommunityFolderPath); count++; }
             }
-            catch { }
+            catch { fail++; }
         }
         await ViewModel.RefreshModListAsync();
-        ShowToast("Batch Enable", $"Enabled {count} mod(s)", ToastNotification.ToastType.Success);
+        if (fail > 0)
+            ShowToast("Batch Enable", $"Enabled {count}, failed {fail}", ToastNotification.ToastType.Warning);
+        else
+            ShowToast("Batch Enable", $"Enabled {count} mod(s)", ToastNotification.ToastType.Success);
     }
 
     private async void ContextDisableAll_Click(object sender, RoutedEventArgs e)
@@ -525,7 +588,7 @@ public partial class MainWindow : Window
             .Where(m => m.Status == ModStatus.Enabled).ToList();
         if (selected.Count == 0) return;
 
-        int count = 0;
+        int count = 0, fail = 0;
         foreach (var mod in selected)
         {
             try
@@ -533,10 +596,13 @@ public partial class MainWindow : Window
                 if (ViewModel.Installer != null)
                 { await ViewModel.Installer.DisableModAsync(mod); count++; }
             }
-            catch { }
+            catch { fail++; }
         }
         await ViewModel.RefreshModListAsync();
-        ShowToast("Batch Disable", $"Disabled {count} mod(s)", ToastNotification.ToastType.Warning);
+        if (fail > 0)
+            ShowToast("Batch Disable", $"Disabled {count}, failed {fail}", ToastNotification.ToastType.Warning);
+        else
+            ShowToast("Batch Disable", $"Disabled {count} mod(s)", ToastNotification.ToastType.Warning);
     }
 
     private void ContextUninstall_Click(object sender, RoutedEventArgs e)
@@ -583,8 +649,8 @@ public partial class MainWindow : Window
             int ok = 0, fail = 0;
             foreach (var file in files)
             {
-                try { await ViewModel.InstallFromPathAsync(file); ok++; }
-                catch { fail++; }
+                if (await ViewModel.InstallFromPathAsync(file)) ok++;
+                else fail++;
             }
             if (fail > 0)
                 ShowToast("Partial Install", $"{ok} ok, {fail} failed", ToastNotification.ToastType.Warning);
@@ -596,11 +662,27 @@ public partial class MainWindow : Window
 
 internal class RelayShortcut : ICommand
 {
-    private readonly Action _execute;
-    public RelayShortcut(Action execute) => _execute = execute;
+    private readonly Func<Task>? _asyncExecute;
+    private readonly Action? _syncExecute;
+
+    public RelayShortcut(Action execute) => _syncExecute = execute;
+    public RelayShortcut(Func<Task> execute) => _asyncExecute = execute;
+
     #pragma warning disable CS0067
     public event EventHandler? CanExecuteChanged;
     #pragma warning restore CS0067
     public bool CanExecute(object? parameter) => true;
-    public void Execute(object? parameter) => _execute();
+
+    public async void Execute(object? parameter)
+    {
+        if (_asyncExecute != null)
+        {
+            try { await _asyncExecute(); }
+            catch { /* exceptions are handled inside each async lambda */ }
+        }
+        else
+        {
+            _syncExecute?.Invoke();
+        }
+    }
 }

@@ -10,6 +10,11 @@ public partial class AboutWindow : Window
         InitializeComponent();
     }
 
+    private void TitleBar_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        try { DragMove(); } catch (InvalidOperationException) { }
+    }
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Patreon_Click(object sender, RoutedEventArgs e)

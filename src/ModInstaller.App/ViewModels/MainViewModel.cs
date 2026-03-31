@@ -157,6 +157,11 @@ public partial class MainViewModel : ObservableObject
     public async Task RefreshModListAsync()
     {
         if (string.IsNullOrEmpty(CommunityFolderPath)) return;
+        if (!Directory.Exists(CommunityFolderPath))
+        {
+            StatusText = "Community folder not found — check Settings";
+            return;
+        }
 
         IsLoading = true;
         StatusText = "Scanning mods...";
@@ -237,9 +242,9 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public async Task InstallFromPathAsync(string path)
+    public async Task<bool> InstallFromPathAsync(string path)
     {
-        if (_installer == null) return;
+        if (_installer == null) return false;
 
         IsLoading = true;
         try
@@ -265,10 +270,12 @@ public partial class MainViewModel : ObservableObject
 
             // Always do a full refresh after install to ensure the mod shows up
             await RefreshModListAsync();
+            return true;
         }
         catch (Exception ex)
         {
             StatusText = $"Install failed: {ex.Message}";
+            return false;
         }
         finally
         {
