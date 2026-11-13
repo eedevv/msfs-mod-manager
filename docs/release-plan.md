@@ -21,11 +21,11 @@ The beta must remain a prerelease, not replace the latest stable release. Do not
 - [x] Validate ZIP boundaries, links, size and entry limits; support detected multi-package and root-level ZIPs and ZIP backup restoration.
 - [ ] Review 7z/RAR extraction and reparse points, security scan integration, and simulator detection.
 - [x] Apply watch-folder changes when Settings is saved.
-- [ ] Fix operation concurrency, conflict-scan completeness, per-mod scan errors and advertised-but-unwired features.
+- [ ] Fix operation concurrency, per-mod scan errors and advertised-but-unwired features. Conflict scans report unreadable paths and nested links, invalidate stale results, and stop rather than silently truncate when limits are exceeded.
 
 ## Phase 3 — Scale and release
 
-- [ ] Implement incremental/background scanning and bounded conflict indexing; synchronize database access; validate large libraries.
+- [ ] Implement incremental/background mod scanning; synchronize database access; validate large libraries. Conflict indexing runs in the background with explicit limits and does not write through the shared SQLite connection.
 - [ ] Complete Windows automated and manual tests; ensure release notes honestly list remaining limitations.
 - [ ] Publish a tested single-file Windows artifact and checksums as a GitHub prerelease, without marking it latest.
 
@@ -52,7 +52,7 @@ Numbers match the 37-item audit in the conversation. "Partial" means mitigation 
 | 24–25: detection and multi-install custom settings | 2 | Open. |
 | 26: concurrent operations | 2 | Open: coordinate file-changing operations and stable installation context. |
 | 27–28: notifications and operation results | 2 | Partial: core status properties and toggle/batch uninstall reporting improved; audit other actions. |
-| 29–31: conflict and scan reliability | 2 | Partial: conflicts use enabled mods and avoid claiming compatibility; report skipped/inaccessible mods and isolate scan errors. |
+| 29–31: conflict and scan reliability | 2 | Partial: conflicts use enabled mods, report incomplete scans, avoid SQLite worker writes, and invalidate stale results; isolate per-mod scan errors. |
 | 32–33: incomplete advertised features and settings | 2 | Open: implement or remove misleading claims and controls. |
 | 34: watch settings | 2 | Implemented; Windows UI manual test pending. |
 | 35–36: window placement and stale analytics | 2 | Implemented; Windows UI manual test pending. |

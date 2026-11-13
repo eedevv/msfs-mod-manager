@@ -399,7 +399,7 @@ public partial class MainWindow : Window
                 break;
             case "Conflicts":
                 if (ViewModel.Database != null)
-                    ConflictPage.Initialize(ViewModel.Database, ViewModel.Mods, ShowToast);
+                    ConflictPage.Initialize(ViewModel.Database, ViewModel.Mods, ShowToast, () => ViewModel.IsLoading);
                 break;
             case "Health":
                 HealthPage.Initialize(ViewModel.Mods, ShowToast);

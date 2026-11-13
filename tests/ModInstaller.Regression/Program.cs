@@ -21,6 +21,7 @@ internal static class Program
             TestFolderSelection();
             TestScopedDisabledStorage();
             TestScopedProfiles();
+            TestConflictScan();
             TestFileSafety();
             Console.WriteLine("Regression checks passed.");
             return 0;
@@ -162,6 +163,36 @@ internal static class Program
                 db.DeleteCommunityProfile(first, "shared");
                 Check(db.GetCommunityProfiles(second).Count == 1 && db.GetAllProfiles().Count == 1, "Deleting a scoped profile must not delete another installation or legacy profile.");
             }
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    private static void TestConflictScan()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MSFSConflictTest_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var first = Path.Combine(root, "first");
+            var second = Path.Combine(root, "second");
+            Directory.CreateDirectory(first);
+            Directory.CreateDirectory(second);
+            File.WriteAllText(Path.Combine(first, "shared.txt"), "one");
+            File.WriteAllText(Path.Combine(second, "shared.txt"), "two");
+            using var db = new ModDatabase(Path.Combine(root, "test.db"));
+            var engine = new ConflictEngine(db);
+            var mods = new List<Mod> { new() { FolderName = "first", FullPath = first }, new() { FolderName = "second", FullPath = second } };
+            var found = engine.ScanForConflictsAsync(mods).GetAwaiter().GetResult();
+            Check(found.Count == 1 && found[0].ConflictingFiles.Contains("shared.txt"), "Matching paths should be reported.");
+            Directory.Delete(second, true);
+            var failed = false;
+            try { engine.ScanForConflictsAsync(mods).GetAwaiter().GetResult(); }
+            catch (IOException ex) { failed = ex.Message.Contains("incomplete"); }
+            Check(failed, "Unavailable mods must fail the scan instead of reporting no conflicts.");
         }
         finally
         {
