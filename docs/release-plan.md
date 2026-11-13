@@ -29,3 +29,29 @@ The beta must remain a prerelease, not replace the latest stable release. Do not
 ## Verification status
 
 Windows build, regression checks and single-file publish passed in GitHub Actions on the working branch. The manual checklist and outstanding safety/security work remain open; the passing checks are not full simulator validation.
+
+## Audit item tracking
+
+Numbers match the 37-item audit in the conversation. "Partial" means mitigation or limited coverage, not a completed fix.
+
+| Audit item(s) | Phase | State / follow-up |
+| --- | --- | --- |
+| 1–5: size, custom path, stale panels/scans and settings validation | 2 | Implemented; manual simulator tests pending. |
+| 6: destructive replacement | 1 | Partial: replacement is rejected and new copies are staged; implement transactional replacement and crash recovery. |
+| 7: external junction targets | 1 | Partial: uninstall preserves all link targets; add ownership tracking and safe cleanup. |
+| 8–10: disabled junction markers, collisions and backups | 1 | Partial: marker targets are respected, collisions rejected, target backed up; test failure and legacy cases, and add ownership-aware cleanup. |
+| 11–13: full/ZIP backups and restore safety | 1 | Partial: full backups restore child mods without overwrite; ZIP restore, transactional overwrite and rollback remain. |
+| 14: unsafe cleanup | 1 | Partial: unmarked items excluded from automatic cleanup; strengthen backup ownership identification and test. |
+| 15: repeated V2 profile import | 1 | Existing names are preserved and migration is recorded; test migration failures and legacy formats. |
+| 16–17: shared disabled storage and global identities | 1 | Open: design per-installation identity and safe, explicit migration. |
+| 18–21: extraction path validation, scanning, process and command safety | 2 | Partial: ZIP path boundary and cancellation fixed, unsafe PowerShell fallback removed and pipes drained; harden all fallback formats, limits and scanning. |
+| 22–23: archive root naming and multi-package archives | 2 | Open. |
+| 24–25: detection and multi-install custom settings | 2 | Open. |
+| 26: concurrent operations | 2 | Open: coordinate file-changing operations and stable installation context. |
+| 27–28: notifications and operation results | 2 | Partial: core status properties and toggle/batch uninstall reporting improved; audit other actions. |
+| 29–31: conflict and scan reliability | 2 | Partial: conflicts use enabled mods and avoid claiming compatibility; report skipped/inaccessible mods and isolate scan errors. |
+| 32–33: incomplete advertised features and settings | 2 | Open: implement or remove misleading claims and controls. |
+| 34: watch settings | 2 | Implemented; Windows UI manual test pending. |
+| 35–36: window placement and stale analytics | 2 | Implemented; Windows UI manual test pending. |
+| 37: suppressed errors | 2 | Open: structured errors, UI reporting and recovery. |
+| Large libraries, repeated scanning, conflicts and DB concurrency | 3 | Open: benchmark and build incremental indexing, bounded work and safe database concurrency. |
