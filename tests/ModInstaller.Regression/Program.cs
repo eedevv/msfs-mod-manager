@@ -18,6 +18,8 @@ internal static class Program
         {
             TestSizeSort();
             TestFolderResolutionAndPersistence();
+            Check(SimDetector.GetSteamAppId(SimVersion.MSFS2020) == 1250410 && SimDetector.GetSteamAppId(SimVersion.MSFS2024) == 2537590,
+                "Steam app IDs must identify MSFS 2020 and 2024, not FSX.");
             TestFolderSelection();
             TestScopedDisabledStorage();
             TestScopedProfiles();

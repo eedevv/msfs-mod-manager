@@ -51,7 +51,7 @@ Numbers match the 37-item audit in the conversation. "Partial" means mitigation 
 | 16–17: shared disabled storage and global identities | 1 | Partial: disabled and new library files are scoped with explicit legacy import; new profiles are scoped and legacy profiles require explicit assignment; new mod metadata and notes are scoped; legacy records remain unassigned, with explicit non-overwriting note import. |
 | 18–21: extraction path validation, scanning, process and command safety | 2 | Partial: ZIP path boundary and cancellation fixed, unsafe PowerShell fallback removed and pipes drained; harden all fallback formats, limits and scanning. |
 | 22–23: archive root naming and multi-package archives | 2 | Implemented for detected packages; partial failure and unusual archives need further work. |
-| 24–25: detection and multi-install custom settings | 2 | Open. |
+| 24–25: detection and multi-install custom settings | 2 | Partial: corrected Steam IDs and prioritize simulator configuration; custom settings are per simulator, not per installation. Manual detection tests remain. |
 | 26: concurrent operations | 2 | Partial: core file mutations are gated in-process and profile loads stop on folder changes; scan overlap, settings changes, external processes and cross-operation batches need further work. |
 | 27–28: notifications and operation results | 2 | Partial: core status properties and toggle/batch uninstall reporting improved; audit other actions. |
 | 29–31: conflict and scan reliability | 2 | Partial: conflicts use enabled mods, report incomplete scans, avoid SQLite worker writes, and invalidate stale results; unreadable individual mods are reported during Community scans. |

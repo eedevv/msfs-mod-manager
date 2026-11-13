@@ -5,7 +5,7 @@
 This beta is not ready to publish until the Windows release checklist passes. Test with disposable folders and keep independent backups. It does not yet resolve all issues in the audit.
 
 ### Changes so far
-- Size sorting uses numeric bytes; custom Community folders are applied for the selected simulator and propagated to backup and profile pages.
+- Size sorting uses numeric bytes; custom Community folders are applied for the selected simulator and propagated to backup and profile pages. Simulator detection prioritizes configured package paths and uses corrected Steam app IDs.
 - Install replacements require confirmation; staged replacements retain the displaced folder or link in a `.msfsmm-recovery-*` folder. Failed promotions roll back where possible.
 - Uninstall preserves link targets and resolves disabled-link markers for backups; disabled links are restored to their original target. Directory deletion avoids traversing nested reparse points.
 - Full and ZIP backups can be restored; package names are checked before restore or install and optional replacement keeps the displaced folder or link. The mod list refreshes after restore, including partial failure. Automatic cleanup skips unmarked and ZIP backups.
