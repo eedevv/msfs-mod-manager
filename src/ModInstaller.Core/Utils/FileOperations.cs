@@ -171,6 +171,18 @@ public class FileOperations
             fullPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsUnsafeZipComponent(string part)
+    {
+        if (part is "." or ".." || part.EndsWith(' ') || part.EndsWith('.') ||
+            part.Any(c => c < 32 || "<>:\"|?*".Contains(c))) return true;
+        var stem = part.Split('.')[0];
+        if (stem.Equals("CON", StringComparison.OrdinalIgnoreCase) || stem.Equals("PRN", StringComparison.OrdinalIgnoreCase) ||
+            stem.Equals("AUX", StringComparison.OrdinalIgnoreCase) || stem.Equals("NUL", StringComparison.OrdinalIgnoreCase) ||
+            stem.Equals("CONIN$", StringComparison.OrdinalIgnoreCase) || stem.Equals("CONOUT$", StringComparison.OrdinalIgnoreCase)) return true;
+        return stem.Length == 4 && (stem.StartsWith("COM", StringComparison.OrdinalIgnoreCase) ||
+            stem.StartsWith("LPT", StringComparison.OrdinalIgnoreCase)) && "123456789¹²³".Contains(stem[3]);
+    }
+
     public async Task ExtractZipAsync(
         string zipPath, string destDir,
         IProgress<FileOperationProgress>? progress = null,
@@ -183,18 +195,44 @@ public class FileOperations
         if (totalEntries > maxEntries)
             throw new IOException("Archive contains too many entries.");
         long totalBytes = 0;
+        var filesSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var directoriesSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // Validate the entire archive before writing any file.
         foreach (var entry in archive.Entries)
         {
+            ct.ThrowIfCancellationRequested();
+            var parts = entry.FullName.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0 || Path.IsPathRooted(entry.FullName) || parts.Any(IsUnsafeZipComponent))
+                throw new IOException($"Unsafe archive path: {entry.FullName}");
             var destination = Path.GetFullPath(Path.Combine(destDir, entry.FullName));
             if (!IsPathWithinDirectory(destDir, destination))
                 throw new IOException($"Zip slip detected: {entry.FullName}");
+            var directoryEntry = entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\');
+            if (directoryEntry)
+            {
+                if (filesSeen.Contains(destination)) throw new IOException($"Archive file/directory collision: {entry.FullName}");
+                directoriesSeen.Add(destination);
+            }
+            else if (directoriesSeen.Contains(destination) || !filesSeen.Add(destination))
+                throw new IOException($"Duplicate archive destination: {entry.FullName}");
             var unixType = (entry.ExternalAttributes >> 16) & 0xF000;
             if (unixType == 0xA000 || (entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
                 throw new IOException($"Archive links are not supported: {entry.FullName}");
             if (entry.Length > maxUncompressedBytes - totalBytes)
                 throw new IOException("Archive exceeds the 100 GiB uncompressed size limit.");
             totalBytes += entry.Length;
+        }
+        // A file must not also be the parent of another entry (including implicit directories).
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destDir));
+        foreach (var destination in filesSeen.Concat(directoriesSeen))
+        {
+            ct.ThrowIfCancellationRequested();
+            var parent = Path.GetDirectoryName(destination);
+            while (parent != null && !parent.Equals(root, StringComparison.OrdinalIgnoreCase) && IsPathWithinDirectory(root, parent))
+            {
+                if (filesSeen.Contains(parent)) throw new IOException($"Archive file/directory collision: {parent}");
+                parent = Path.GetDirectoryName(parent);
+            }
         }
         long extractedBytes = 0;
         int extractedFiles = 0;
@@ -210,7 +248,7 @@ public class FileOperations
             if (!IsPathWithinDirectory(destDir, destPath))
                 throw new IOException($"Zip slip detected: {entry.FullName}");
 
-            if (string.IsNullOrEmpty(entry.Name))
+            if (entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\'))
             {
                 Directory.CreateDirectory(destPath);
                 continue;
@@ -219,11 +257,23 @@ public class FileOperations
             var entryDir = Path.GetDirectoryName(destPath);
             if (entryDir != null) Directory.CreateDirectory(entryDir);
 
+            long entryBytes = 0;
             using (var entryStream = entry.Open())
-            using (var fileStream = File.Create(destPath))
-                await entryStream.CopyToAsync(fileStream, ct);
-
-            extractedBytes += entry.Length;
+            using (var fileStream = new FileStream(destPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+            {
+                var buffer = new byte[81920];
+                int count;
+                while ((count = await entryStream.ReadAsync(buffer, ct)) != 0)
+                {
+                    if (count > entry.Length - entryBytes || count > maxUncompressedBytes - extractedBytes)
+                        throw new IOException($"Archive entry exceeds its declared size or the extraction limit: {entry.FullName}");
+                    await fileStream.WriteAsync(buffer.AsMemory(0, count), ct);
+                    entryBytes += count;
+                    extractedBytes += count;
+                }
+            }
+            if (entryBytes != entry.Length)
+                throw new IOException($"Archive entry size does not match its declaration: {entry.FullName}");
             extractedFiles++;
 
             if (progress != null && (DateTime.UtcNow - lastReport).TotalMilliseconds >= ProgressThrottleMs)

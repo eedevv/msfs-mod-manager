@@ -236,6 +236,24 @@ internal static class Program
             catch (IOException) { rejected = true; }
             Check(rejected && !File.Exists(Path.Combine(root, "dest-other", "escape.txt")), "ZIP traversal must be rejected.");
 
+            var duplicateZip = Path.Combine(root, "duplicate.zip");
+            using (var archive = ZipFile.Open(duplicateZip, ZipArchiveMode.Create))
+            {
+                using (var writer = new StreamWriter(archive.CreateEntry("first.txt").Open())) writer.Write("first");
+                using (var writer = new StreamWriter(archive.CreateEntry("FIRST.txt").Open())) writer.Write("second");
+            }
+            rejected = false;
+            try { new FileOperations().ExtractZipAsync(duplicateZip, dest).GetAwaiter().GetResult(); }
+            catch (IOException) { rejected = true; }
+            Check(rejected && !File.Exists(Path.Combine(dest, "first.txt")), "Duplicate ZIP destinations must be rejected before extraction.");
+            var adsZip = Path.Combine(root, "ads.zip");
+            using (var archive = ZipFile.Open(adsZip, ZipArchiveMode.Create))
+            using (var writer = new StreamWriter(archive.CreateEntry("mod/file.txt:stream").Open())) writer.Write("bad");
+            rejected = false;
+            try { new FileOperations().ExtractZipAsync(adsZip, dest).GetAwaiter().GetResult(); }
+            catch (IOException) { rejected = true; }
+            Check(rejected && !Directory.Exists(Path.Combine(dest, "mod")), "ZIP alternate streams must be rejected before extraction.");
+
             var source = Path.Combine(root, "source", "test-mod");
             var community = Path.Combine(root, "community");
             var library = Path.Combine(root, "library");

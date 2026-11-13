@@ -9,7 +9,7 @@ This beta is not ready to publish until the Windows release checklist passes. Te
 - Install replacements require confirmation; staged replacements retain the displaced folder or link in a `.msfsmm-recovery-*` folder. Failed promotions roll back where possible.
 - Uninstall preserves link targets and resolves disabled-link markers for backups; disabled links are restored to their original target. Directory deletion avoids traversing nested reparse points.
 - Full and ZIP backups can be restored; optional replacement keeps the displaced folder or link. Automatic cleanup skips unmarked and ZIP backups.
-- ZIP archives are validated before extraction, with traversal and link checks and uncompressed-size and entry-count limits. ZIP extraction no longer falls back to external extractors.
+- ZIP archives are validated before extraction, with traversal, Windows path, duplicate-destination and link checks and uncompressed-size and entry-count limits; actual decompressed bytes are also checked. ZIP extraction no longer falls back to external extractors.
 - Extractor output is drained asynchronously, and V2 profile import no longer overwrites existing profiles or repeats after successful migration.
 - Improved status change notifications, uninstall/toggle reporting, window position restoration and empty analytics. Conflict scans now report incomplete scans, invalidate stale results and impose safety limits instead of silently claiming a clean scan.
 - Apply watch-folder settings immediately and avoid listing temporary staging folders as mods.
