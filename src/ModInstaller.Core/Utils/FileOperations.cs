@@ -188,6 +188,14 @@ public class FileOperations
             fullPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Reject paths and manager-reserved names where one package folder name is required.</summary>
+    public static void ValidatePackageName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(['/', '\\']) >= 0 ||
+            IsUnsafeZipComponent(name) || name.StartsWith(".msfsmm-", StringComparison.OrdinalIgnoreCase))
+            throw new IOException($"Invalid or reserved package name: {name}");
+    }
+
     private static bool IsUnsafeZipComponent(string part)
     {
         if (part is "." or ".." || part.EndsWith(' ') || part.EndsWith('.') ||

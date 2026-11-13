@@ -60,6 +60,7 @@ public class ModInstallerService
                     ? Path.GetFileNameWithoutExtension(sourcePath) : Path.GetFileName(root)).ToList();
                 if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Count)
                     throw new IOException("Archive contains duplicate or invalid package names; nothing was installed.");
+                foreach (var name in names) FileOperations.ValidatePackageName(name);
                 // Ask about all existing destinations before installing any package.
                 var replacements = new List<bool>();
                 foreach (var name in names)
@@ -132,6 +133,7 @@ public class ModInstallerService
         Func<string, bool>? confirmReplacement = null)
     {
         var modFolderName = folderName ?? Path.GetFileName(Path.TrimEndingDirectorySeparator(modSourceDir));
+        FileOperations.ValidatePackageName(modFolderName);
         var destPath = Path.Combine(communityFolder, modFolderName);
 
         var exists = Directory.Exists(destPath) || JunctionHelper.IsJunction(destPath);

@@ -176,6 +176,7 @@ public class BackupManager
         if (isFullBackup)
         {
             var folders = Directory.GetDirectories(backupPath);
+            foreach (var folder in folders) FileOperations.ValidatePackageName(Path.GetFileName(folder));
             // Check all destinations before changing anything when overwrite is not allowed.
             if (!overwrite)
                 foreach (var folder in folders)
@@ -186,6 +187,7 @@ public class BackupManager
         }
 
         name = RemoveTimestamp(name);
+        FileOperations.ValidatePackageName(name);
         var destPath = Path.Combine(communityFolder, name);
         if (!overwrite) EnsureDestinationFree(destPath);
         await RestoreOneAsync(backupPath, destPath, overwrite, progress, cancellationToken);
@@ -211,8 +213,7 @@ public class BackupManager
             else
                 throw new IOException("ZIP backup must contain exactly one mod folder or a mod at the archive root.");
             var name = RemoveTimestamp(Path.GetFileNameWithoutExtension(zipPath));
-            if (string.IsNullOrWhiteSpace(name) || name is "." or "..")
-                throw new IOException("Invalid backup name.");
+            FileOperations.ValidatePackageName(name);
             var dest = Path.Combine(communityFolder, name);
             if (!overwrite) EnsureDestinationFree(dest);
             await RestoreOneAsync(source, dest, overwrite, progress, ct);
@@ -226,7 +227,7 @@ public class BackupManager
 
     private static string RemoveTimestamp(string name)
     {
-        if (name.Length > 16)
+        if (name.Length >= 16)
         {
             var suffix = name[^16..];
             if (suffix[0] == '_' && suffix[9] == '_' && suffix[1..9].All(char.IsDigit) && suffix[10..].All(char.IsDigit))

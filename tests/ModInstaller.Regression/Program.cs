@@ -366,6 +366,18 @@ internal static class Program
                 "Deleting a folder must not follow nested junctions or delete their targets.");
 
             var backupManager = new BackupManager(settings, new FileOperations());
+            var unsafeBackup = Path.Combine(root, "_20260101_120000");
+            Directory.CreateDirectory(unsafeBackup);
+            File.WriteAllText(Path.Combine(unsafeBackup, "keep.txt"), "old");
+            rejected = false;
+            try { backupManager.RestoreBackupAsync(unsafeBackup, community, overwrite: true).GetAwaiter().GetResult(); }
+            catch (IOException) { rejected = true; }
+            Check(rejected && Directory.Exists(community) && File.Exists(Path.Combine(unsafeBackup, "keep.txt")),
+                "A timestamp-only backup name must not target the Community folder itself.");
+            rejected = false;
+            try { FileOperations.ValidatePackageName(".msfsmm-recovery-malicious"); }
+            catch (IOException) { rejected = true; }
+            Check(rejected, "Manager-reserved package names must be rejected.");
             var full = Path.Combine(settings.BackupDirectory, "FullBackup_20260101_120000");
             Directory.CreateDirectory(Path.Combine(full, "mod-a"));
             Directory.CreateDirectory(Path.Combine(full, "mod-b"));
