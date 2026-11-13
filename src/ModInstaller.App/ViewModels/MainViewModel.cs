@@ -304,6 +304,19 @@ public partial class MainViewModel : ObservableObject
             return false;
         }
 
+        var extension = Path.GetExtension(path);
+        if ((extension.Equals(".7z", StringComparison.OrdinalIgnoreCase) || extension.Equals(".rar", StringComparison.OrdinalIgnoreCase)) &&
+            System.Windows.MessageBox.Show(
+                "7z and RAR files are extracted by an external 7-Zip installation before they can be inspected. " +
+                "They do not have the ZIP path and size safeguards; a malicious archive could harm files or exhaust disk space. " +
+                "Only continue if you trust the archive and your 7-Zip installation. Continue?",
+                "External archive warning", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning)
+                != System.Windows.MessageBoxResult.Yes)
+        {
+            StatusText = "Installation canceled.";
+            return false;
+        }
+
         IsLoading = true;
         try
         {

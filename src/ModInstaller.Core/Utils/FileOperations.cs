@@ -20,6 +20,7 @@ public class FileOperations
             if (!sourceInfo.Exists)
                 throw new DirectoryNotFoundException($"Source not found: {sourceDir}");
 
+            RejectNestedLinks(sourceDir, ct);
             var allFiles = sourceInfo.GetFiles("*", SearchOption.AllDirectories);
             long totalBytes = allFiles.Sum(f => f.Length);
             long copiedBytes = 0;
@@ -69,6 +70,26 @@ public class FileOperations
                 TotalBytes = totalBytes, ProcessedBytes = copiedBytes, PercentComplete = 100
             });
         }, ct);
+    }
+
+    /// <summary>Reject links within content rather than traversing them. The root may itself be an intentional mod junction.</summary>
+    public static void RejectNestedLinks(string root, CancellationToken ct = default)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root);
+        var options = new EnumerationOptions { RecurseSubdirectories = false, AttributesToSkip = 0, IgnoreInaccessible = false };
+        while (pending.Count > 0)
+        {
+            ct.ThrowIfCancellationRequested();
+            foreach (var entry in Directory.EnumerateFileSystemEntries(pending.Pop(), "*", options))
+            {
+                ct.ThrowIfCancellationRequested();
+                var attributes = File.GetAttributes(entry);
+                if (attributes.HasFlag(FileAttributes.ReparsePoint))
+                    throw new IOException($"Nested links in mod or backup content are not supported: {entry}");
+                if (attributes.HasFlag(FileAttributes.Directory)) pending.Push(entry);
+            }
+        }
     }
 
     public async Task MoveDirectoryAsync(

@@ -350,6 +350,14 @@ internal static class Program
             service.UninstallMod(new Mod { FolderName = "external-mod", FullPath = link }, community, createBackup: true);
             Check(!Directory.Exists(link) && File.Exists(Path.Combine(external, "keep.txt")), "Uninstall must preserve external link targets.");
 
+            var linkedSource = Path.Combine(root, "linked-source");
+            Directory.CreateDirectory(linkedSource);
+            JunctionHelper.CreateJunction(Path.Combine(linkedSource, "nested"), external);
+            rejected = false;
+            try { new FileOperations().CopyDirectoryAsync(linkedSource, Path.Combine(root, "linked-copy")).GetAwaiter().GetResult(); }
+            catch (IOException) { rejected = true; }
+            Check(rejected && File.Exists(Path.Combine(external, "keep.txt")), "Copy must refuse nested links without modifying their targets.");
+
             var nestedContainer = Path.Combine(root, "delete-container");
             Directory.CreateDirectory(nestedContainer);
             JunctionHelper.CreateJunction(Path.Combine(nestedContainer, "external-link"), external);

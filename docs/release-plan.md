@@ -21,7 +21,7 @@ The beta must remain a prerelease, not replace the latest stable release. Do not
 - [x] Fix size sort and custom Community folder selection; propagate the selected path to profile/backup panels.
 - [x] Preserve mod change notifications, truthful batch uninstall/toggle results, window position, and empty analytics.
 - [x] Validate ZIP boundaries, links, size and entry limits; support detected multi-package and root-level ZIPs and ZIP backup restoration.
-- [ ] Review 7z/RAR extraction and reparse points, security scan integration, and simulator detection.
+- [ ] Fully harden 7z/RAR extraction before it writes any files, integrate appropriate security scanning, and review simulator detection. The UI warns before external extraction, and nested links are rejected after extraction and before copying; this is not a sandbox.
 - [x] Apply watch-folder changes when Settings is saved.
 - [ ] Fix operation concurrency and advertised-but-unwired features. Scanning reports per-mod read failures; conflict scans report unreadable paths and nested links, invalidate stale results, and stop rather than silently truncate when limits are exceeded.
 

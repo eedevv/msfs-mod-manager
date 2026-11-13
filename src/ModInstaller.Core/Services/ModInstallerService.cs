@@ -50,6 +50,8 @@ public class ModInstallerService
                 progress?.Report(new FileOperationProgress { CurrentFile = "Extracting archive..." });
 
                 await ExtractArchiveAsync(sourcePath, tempDir, progress, cancellationToken);
+                // 7-Zip may create links; never traverse them while identifying or copying packages.
+                await Task.Run(() => FileOperations.RejectNestedLinks(tempDir, cancellationToken), cancellationToken);
 
                 var modRoots = ModScanner.FindModRootsInExtractedArchive(tempDir);
                 if (modRoots.Count == 0)
@@ -364,7 +366,10 @@ public class ModInstallerService
                 if (Directory.GetFileSystemEntries(destDir).Length > 0) return;
             }
             catch (OperationCanceledException) { throw; }
-            catch { CleanDirectory(destDir); }
+            catch (Exception ex)
+            {
+                throw new IOException($"7-Zip extraction failed: {ex.Message}", ex);
+            }
         }
 
         // All strategies failed
@@ -432,21 +437,9 @@ public class ModInstallerService
             throw new IOException($"{fileName} failed (exit {process.ExitCode}): {error}");
     }
 
-    private static void CleanDirectory(string path)
-    {
-        try
-        {
-            foreach (var entry in Directory.GetFileSystemEntries(path))
-            {
-                if (File.Exists(entry)) File.Delete(entry);
-                else if (Directory.Exists(entry)) Directory.Delete(entry, true);
-            }
-        }
-        catch { }
-    }
-
     private static void CopyDirSync(string source, string dest)
     {
+        FileOperations.RejectNestedLinks(source);
         Directory.CreateDirectory(dest);
         foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
         {

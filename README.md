@@ -26,7 +26,7 @@ The ultimate mod manager for Microsoft Flight Simulator 2020 & 2024.
 - **Backup Manager** — Create, restore, compress, and clean mod backups
 - **Conflict Scanner** — Detect file conflicts between mods
 - **Health Checker** — Validate mod structure, manifests, and integrity
-- **Security Scanner** — Checks for dangerous files before installation
+- **Archive safety** — ZIP paths and sizes are validated; 7z/RAR use external 7-Zip and are not subject to the same safeguards. Use trusted sources and antivirus software.
 
 **Intelligence:**
 - **Storage Analytics** — Disk usage breakdown, largest mods dashboard

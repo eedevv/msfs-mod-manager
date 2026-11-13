@@ -89,6 +89,7 @@ public class BackupManager
 
         await Task.Run(() =>
         {
+            FileOperations.RejectNestedLinks(sourcePath, cancellationToken);
             ZipFile.CreateFromDirectory(sourcePath, zipPath, CompressionLevel.Optimal, includeBaseDirectory: true);
         }, cancellationToken);
 
