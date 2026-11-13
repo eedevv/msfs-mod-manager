@@ -35,12 +35,12 @@ public partial class ConflictPanel : UserControl
 
         try
         {
-            var results = await _engine.ScanForConflictsAsync(_mods.ToList(), progress);
+            var results = await _engine.ScanForConflictsAsync(_mods.Where(m => m.Status == ModStatus.Enabled).ToList(), progress);
             ConflictList.ItemsSource = results;
             ScanStatus.Text = $"Found {results.Count} conflict(s)";
 
             if (results.Count == 0)
-                _showToast?.Invoke("No Conflicts", "All mods are compatible", ToastNotification.ToastType.Success);
+                _showToast?.Invoke("No Conflicts", "No matching paths found; this does not guarantee compatibility.", ToastNotification.ToastType.Success);
             else
                 _showToast?.Invoke("Conflicts Found", $"{results.Count} conflict(s) detected", ToastNotification.ToastType.Warning);
         }

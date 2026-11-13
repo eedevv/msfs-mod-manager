@@ -20,6 +20,8 @@ public partial class MainViewModel : ObservableObject
     private ModDatabase? _db;
     private ModInstallerService? _installer;
     private AppSettings _settings = new();
+    private bool _initializingInstallations;
+    private int _scanGeneration;
 
     public AppSettings Settings => _settings;
     public ModDatabase? Database => _db;
@@ -64,12 +66,23 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedInstallationChanged(SimInstallation? value)
     {
-        if (value != null)
-        {
-            CommunityFolderPath = value.CommunityFolder;
-            ActiveSimVersion = value.Version;
-            _ = RefreshModListAsync();
-        }
+        if (_initializingInstallations || value == null) return;
+
+        ActiveSimVersion = value.Version;
+        _settings.ActiveSim = value.Version;
+        _ = ApplyCommunityFolderAsync();
+    }
+
+    /// <summary>Apply the selected simulator's custom or detected Community folder.</summary>
+    public Task ApplyCommunityFolderAsync()
+    {
+        var resolved = _settings.ResolveCommunityFolder(ActiveSimVersion, SelectedInstallation?.CommunityFolder);
+        CommunityFolderPath = resolved;
+        // Clear the old folder's mods immediately, even if the new path is unavailable.
+        Mods.Clear();
+        SelectedMod = null;
+        UpdateStats();
+        return RefreshModListAsync();
     }
 
     private bool FilterMods(object obj)
@@ -132,16 +145,19 @@ public partial class MainViewModel : ObservableObject
             foreach (var install in installations)
                 DetectedInstallations.Add(install);
 
-            if (installations.Count > 0)
+            _initializingInstallations = true;
+            try
             {
-                // Prefer 2024, fall back to 2020
-                SelectedInstallation = installations.FirstOrDefault(i => i.Version == SimVersion.MSFS2024)
-                                       ?? installations[0];
+                SelectedInstallation = installations.FirstOrDefault(i => i.Version == _settings.ActiveSim)
+                                       ?? installations.FirstOrDefault(i => i.Version == SimVersion.MSFS2024)
+                                       ?? installations.FirstOrDefault();
+                ActiveSimVersion = SelectedInstallation?.Version ??
+                    (_settings.ActiveSim == SimVersion.MSFS2020 ? SimVersion.MSFS2020 : SimVersion.MSFS2024);
+                _settings.ActiveSim = ActiveSimVersion;
             }
-            else
-            {
-                StatusText = "No MSFS installation detected. Use Settings to set a custom path.";
-            }
+            finally { _initializingInstallations = false; }
+
+            await ApplyCommunityFolderAsync();
         }
         catch (Exception ex)
         {
@@ -156,9 +172,15 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     public async Task RefreshModListAsync()
     {
-        if (string.IsNullOrEmpty(CommunityFolderPath)) return;
-        if (!Directory.Exists(CommunityFolderPath))
+        var generation = ++_scanGeneration;
+        var communityFolder = CommunityFolderPath;
+        var simVersion = ActiveSimVersion;
+        if (string.IsNullOrWhiteSpace(communityFolder) || !Directory.Exists(communityFolder))
         {
+            Mods.Clear();
+            SelectedMod = null;
+            UpdateStats();
+            IsLoading = false;
             StatusText = "Community folder not found — check Settings";
             return;
         }
@@ -168,48 +190,73 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            var progress = new Progress<string>(msg => StatusText = msg);
-            var mods = await _scanner.ScanCommunityFolderAsync(CommunityFolderPath, ActiveSimVersion, progress);
+            var progress = new Progress<string>(msg =>
+            {
+                if (generation == _scanGeneration) StatusText = msg;
+            });
+            var mods = await _scanner.ScanCommunityFolderAsync(communityFolder, simVersion, progress);
 
             // Also scan disabled mods
             if (Directory.Exists(AppSettings.DisabledModsDirectory))
             {
-                var disabledMods = await _scanner.ScanCommunityFolderAsync(AppSettings.DisabledModsDirectory, ActiveSimVersion);
-                foreach (var mod in disabledMods)
+                var disabledMods = await _scanner.ScanCommunityFolderAsync(AppSettings.DisabledModsDirectory, simVersion);
+                foreach (var markerMod in disabledMods)
                 {
+                    var mod = markerMod;
+                    try
+                    {
+                        var target = ModInstallerService.GetDisabledContentPath(markerMod.FullPath);
+                        if (target != null && Directory.Exists(target))
+                        {
+                            mod = await _scanner.ScanModDirectoryAsync(target, simVersion) ?? markerMod;
+                            mod.FolderName = markerMod.FolderName;
+                            mod.FullPath = markerMod.FullPath;
+                            mod.LibraryPath = target;
+                            mod.LinkType = LinkType.Junction;
+                        }
+                        else if (target != null)
+                        {
+                            mod.Health = HealthStatus.Critical;
+                            mod.HealthIssues.Add($"Disabled mod target not found: {target}");
+                        }
+                    }
+                    catch (IOException ex)
+                    {
+                        mod.Health = HealthStatus.Critical;
+                        mod.HealthIssues.Add(ex.Message);
+                    }
                     mod.Status = ModStatus.Disabled;
                     mods.Add(mod);
                 }
             }
+
+            // A newer scan may have started after the folder or simulator changed.
+            if (generation != _scanGeneration) return;
 
             Mods.Clear();
             var sorted = mods.OrderBy(m => m.DisplayName).ToList();
             foreach (var mod in sorted)
                 Mods.Add(mod);
 
-            // Batch database write
             _db?.UpsertMods(sorted);
-
-            // Load user notes
             LoadModNotes();
-
             UpdateStats();
             StatusText = $"Loaded {mods.Count} mods";
         }
         catch (Exception ex)
         {
-            StatusText = $"Error scanning: {ex.Message}";
+            if (generation == _scanGeneration) StatusText = $"Error scanning: {ex.Message}";
         }
         finally
         {
-            IsLoading = false;
+            if (generation == _scanGeneration) IsLoading = false;
         }
     }
 
     [RelayCommand]
-    public async Task ToggleModAsync(Mod? mod)
+    public async Task<bool> ToggleModAsync(Mod? mod)
     {
-        if (mod == null || _installer == null) return;
+        if (mod == null || _installer == null) return false;
 
         try
         {
@@ -230,14 +277,17 @@ public partial class MainViewModel : ObservableObject
                 await _installer.EnableModAsync(mod, CommunityFolderPath, progress);
             }
 
+            ModsView.Refresh();
             UpdateStats();
             StatusText = $"{mod.DisplayName} {(mod.Status == ModStatus.Enabled ? "enabled" : "disabled")}";
             ProgressValue = 0;
             ProgressText = "";
+            return true;
         }
         catch (Exception ex)
         {
             StatusText = $"Error: {ex.Message}";
+            return false;
         }
     }
 
@@ -245,6 +295,11 @@ public partial class MainViewModel : ObservableObject
     public async Task<bool> InstallFromPathAsync(string path)
     {
         if (_installer == null) return false;
+        if (string.IsNullOrWhiteSpace(CommunityFolderPath) || !Directory.Exists(CommunityFolderPath))
+        {
+            StatusText = "Community folder not found — check Settings";
+            return false;
+        }
 
         IsLoading = true;
         try
@@ -286,20 +341,23 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void UninstallMod(Mod? mod)
-    {
-        if (mod == null || _installer == null) return;
+    public void UninstallMod(Mod? mod) => TryUninstallMod(mod);
 
+    public bool TryUninstallMod(Mod? mod)
+    {
+        if (mod == null || _installer == null) return false;
         try
         {
             _installer.UninstallMod(mod, createBackup: true);
             Mods.Remove(mod);
             UpdateStats();
             StatusText = $"Uninstalled {mod.DisplayName}";
+            return true;
         }
         catch (Exception ex)
         {
             StatusText = $"Uninstall failed: {ex.Message}";
+            return false;
         }
     }
 

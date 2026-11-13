@@ -360,7 +360,7 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTemplateColumn x:Name="ColType" Header="TYPE" Width="110">
+                                <DataGridTemplateColumn x:Name="ColType" Header="TYPE" SortMemberPath="Type" Width="110">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Background="#10FFFFFF" CornerRadius="6" Padding="8,3"
@@ -381,7 +381,7 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTextColumn x:Name="ColSize" Header="SIZE" Binding="{Binding SizeDisplay}" Width="75">
+                                <DataGridTextColumn x:Name="ColSize" Header="SIZE" Binding="{Binding SizeDisplay}" SortMemberPath="SizeBytes" Width="75">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
@@ -391,7 +391,7 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTemplateColumn x:Name="ColStatus" Header="STATUS" Width="90">
+                                <DataGridTemplateColumn x:Name="ColStatus" Header="STATUS" SortMemberPath="Status" Width="90">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border CornerRadius="10" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Center">

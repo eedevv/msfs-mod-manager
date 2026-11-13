@@ -1,13 +1,24 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace ModInstaller.Core.Models;
 
 /// <summary>
 /// Represents an installed MSFS mod in the Community folder.
 /// </summary>
-public class Mod
+public class Mod : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void Notify([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    private string _fullPath = "";
+    private ModStatus _status = ModStatus.Enabled;
+    private LinkType _linkType = LinkType.Copy;
+    private string? _libraryPath;
+    private string? _note;
     public int Id { get; set; }
     public required string FolderName { get; set; }
-    public required string FullPath { get; set; }
+    public required string FullPath { get => _fullPath; set { if (_fullPath != value) { _fullPath = value; Notify(); } } }
 
     // From manifest.json (if available)
     public string? Title { get; set; }
@@ -18,15 +29,15 @@ public class Mod
 
     // Computed/detected
     public ModType Type { get; set; } = ModType.Unknown;
-    public ModStatus Status { get; set; } = ModStatus.Enabled;
+    public ModStatus Status { get => _status; set { if (_status != value) { _status = value; Notify(); } } }
     public long SizeBytes { get; set; }
     public int FileCount { get; set; }
     public DateTime? InstalledDate { get; set; }
     public DateTime? LastModified { get; set; }
 
     // Link info
-    public LinkType LinkType { get; set; } = LinkType.Copy;
-    public string? LibraryPath { get; set; }
+    public LinkType LinkType { get => _linkType; set { if (_linkType != value) { _linkType = value; Notify(); } } }
+    public string? LibraryPath { get => _libraryPath; set { if (_libraryPath != value) { _libraryPath = value; Notify(); } } }
 
     // Health
     public bool HasManifest { get; set; }
@@ -41,7 +52,7 @@ public class Mod
     public SimVersion SimVersion { get; set; } = SimVersion.Unknown;
 
     // User-added note/tag
-    public string? Note { get; set; }
+    public string? Note { get => _note; set { if (_note != value) { _note = value; Notify(); } } }
 
     public string DisplayName => Title ?? FolderName;
     public string SizeDisplay => FormatSize(SizeBytes);

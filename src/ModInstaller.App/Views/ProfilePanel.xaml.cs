@@ -39,6 +39,8 @@ public partial class ProfilePanel : UserControl
         _refreshCallback = refreshCallback;
     }
 
+    public void SetCommunityFolder(string communityFolder) => _communityFolder = communityFolder;
+
     public void RefreshList()
     {
         if (_db == null) return;
@@ -71,7 +73,12 @@ public partial class ProfilePanel : UserControl
     private async void LoadProfile_Click(object sender, RoutedEventArgs e)
     {
         var name = (sender as Button)?.Tag as string;
-        if (name == null || _db == null || _installer == null || _communityFolder == null || _mods == null) return;
+        if (name == null || _db == null || _installer == null || _mods == null) return;
+        if (string.IsNullOrWhiteSpace(_communityFolder) || !Directory.Exists(_communityFolder))
+        {
+            _showToast?.Invoke("Community Folder", "Community folder not found — check Settings", ToastNotification.ToastType.Warning);
+            return;
+        }
 
         var profiles = _db.GetAllProfiles();
         var profile = profiles.FirstOrDefault(p => p.Name == name);

@@ -5,6 +5,33 @@ public class AppSettings
     public string? CustomCommunityFolder2020 { get; set; }
     public string? CustomCommunityFolder2024 { get; set; }
     public bool UseCustomFolder { get; set; }
+
+    public string? GetCustomCommunityFolder(SimVersion version) => version switch
+    {
+        SimVersion.MSFS2020 => CustomCommunityFolder2020,
+        SimVersion.MSFS2024 => CustomCommunityFolder2024,
+        _ => null
+    };
+
+    public void SetCustomCommunityFolder(SimVersion version, string? path)
+    {
+        switch (version)
+        {
+            case SimVersion.MSFS2020: CustomCommunityFolder2020 = path; break;
+            case SimVersion.MSFS2024: CustomCommunityFolder2024 = path; break;
+            default: throw new ArgumentOutOfRangeException(nameof(version));
+        }
+    }
+
+    // A configured custom path takes precedence even when missing: never silently
+    // install into a different folder if a drive has been disconnected.
+    public string ResolveCommunityFolder(SimVersion version, string? detectedFolder)
+    {
+        var custom = GetCustomCommunityFolder(version);
+        return UseCustomFolder && !string.IsNullOrWhiteSpace(custom)
+            ? custom : detectedFolder ?? "";
+    }
+
     public string BackupDirectory { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MSFS_Mod_Backups");
     public string ModLibraryDirectory { get; set; } = Path.Combine(
@@ -37,6 +64,7 @@ public class AppSettings
 
     // First-time + usage
     public bool HasCompletedTutorial { get; set; }
+    public bool HasMigratedV2Profiles { get; set; }
     public int LaunchCount { get; set; }
 
     // Mod notes (folder name → note text)

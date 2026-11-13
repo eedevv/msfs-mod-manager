@@ -36,7 +36,7 @@ public class FileOperations
                 var destFile = Path.Combine(destDir, relativePath);
 
                 // Prevent path traversal
-                if (!Path.GetFullPath(destFile).StartsWith(Path.GetFullPath(destDir), StringComparison.OrdinalIgnoreCase))
+                if (!IsPathWithinDirectory(destDir, destFile))
                     throw new IOException($"Path traversal detected: {relativePath}");
 
                 var destFileDir = Path.GetDirectoryName(destFile);
@@ -79,12 +79,14 @@ public class FileOperations
         if (!Directory.Exists(sourceDir))
             throw new DirectoryNotFoundException($"Source not found: {sourceDir}");
 
+        if (Directory.Exists(destDir) || File.Exists(destDir))
+            throw new IOException($"Destination already exists: {destDir}");
+
         // Same drive: try fast rename first
         if (Path.GetPathRoot(sourceDir)?.Equals(Path.GetPathRoot(destDir), StringComparison.OrdinalIgnoreCase) == true)
         {
             try
             {
-                if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
                 Directory.Move(sourceDir, destDir);
                 progress?.Report(new FileOperationProgress { PercentComplete = 100, ProcessedFiles = 1, TotalFiles = 1 });
                 return;
@@ -134,6 +136,16 @@ public class FileOperations
         }
     }
 
+    /// <summary>Checks containment on a path-component boundary, not a string prefix.</summary>
+    public static bool IsPathWithinDirectory(string directory, string path)
+    {
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
+        var fullPath = Path.GetFullPath(path);
+        var prefix = Path.EndsInDirectorySeparator(root) ? root : root + Path.DirectorySeparatorChar;
+        return fullPath.Equals(root, StringComparison.OrdinalIgnoreCase) ||
+            fullPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
+
     public async Task ExtractZipAsync(
         string zipPath, string destDir,
         IProgress<FileOperationProgress>? progress = null,
@@ -153,7 +165,7 @@ public class FileOperations
             var destPath = Path.GetFullPath(Path.Combine(destDir, entry.FullName));
 
             // Prevent zip slip attack (path traversal via archive entry names)
-            if (!destPath.StartsWith(Path.GetFullPath(destDir), StringComparison.OrdinalIgnoreCase))
+            if (!IsPathWithinDirectory(destDir, destPath))
                 throw new IOException($"Zip slip detected: {entry.FullName}");
 
             if (string.IsNullOrEmpty(entry.Name))

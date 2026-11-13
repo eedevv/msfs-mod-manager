@@ -103,6 +103,8 @@ public class BackupManager
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         var backupDir = Path.Combine(_settings.BackupDirectory, $"FullBackup_{timestamp}");
+        if (Directory.Exists(backupDir))
+            throw new IOException($"Backup already exists: {backupDir}");
         Directory.CreateDirectory(backupDir);
 
         var modDirs = Directory.GetDirectories(communityFolder);
@@ -134,6 +136,8 @@ public class BackupManager
             });
         }
 
+        await File.WriteAllTextAsync(Path.Combine(backupDir, ".backup_meta.json"),
+            "{\"Kind\":\"FullBackup\"}", cancellationToken);
         return backupDir;
     }
 
@@ -148,36 +152,56 @@ public class BackupManager
         CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(backupPath))
-            throw new DirectoryNotFoundException($"Backup not found: {backupPath}");
+            throw new DirectoryNotFoundException($"Backup directory not found (ZIP restore is not yet supported): {backupPath}");
+        if (!Directory.Exists(communityFolder))
+            throw new DirectoryNotFoundException($"Community folder not found: {communityFolder}");
 
-        var modName = Path.GetFileName(backupPath) ?? throw new IOException("Invalid backup path");
-
-        // Strip timestamp suffix: "mymod_20240101_120000" → "mymod"
-        // Match pattern: _YYYYMMDD_HHMMSS at the end (exactly 16 chars: _8_6)
-        if (modName.Length > 16)
+        var name = Path.GetFileName(backupPath);
+        var isFullBackup = name.StartsWith("FullBackup_", StringComparison.OrdinalIgnoreCase);
+        if (isFullBackup)
         {
-            var candidate = modName[^16..]; // last 16 chars
-            if (candidate.Length == 16 && candidate[0] == '_' && candidate[9] == '_' &&
-                candidate[1..9].All(char.IsDigit) && candidate[10..].All(char.IsDigit))
-            {
-                modName = modName[..^16];
-            }
+            var folders = Directory.GetDirectories(backupPath);
+            // Check all destinations before changing anything; overwrites are intentionally disabled.
+            foreach (var folder in folders)
+                EnsureDestinationFree(Path.Combine(communityFolder, Path.GetFileName(folder)));
+            foreach (var folder in folders)
+                await RestoreOneAsync(folder, Path.Combine(communityFolder, Path.GetFileName(folder)), progress, cancellationToken);
+            return;
         }
 
-        var destPath = Path.Combine(communityFolder, modName);
-
-        if (Directory.Exists(destPath) || JunctionHelper.IsJunction(destPath))
+        if (name.Length > 16)
         {
-            if (!overwrite)
-                throw new IOException($"Mod already exists: {modName}. Set overwrite=true to replace.");
-
-            if (JunctionHelper.IsJunction(destPath))
-                JunctionHelper.RemoveJunction(destPath);
-            else
-                FileOperations.SafeDeleteDirectory(destPath);
+            var suffix = name[^16..];
+            if (suffix[0] == '_' && suffix[9] == '_' && suffix[1..9].All(char.IsDigit) && suffix[10..].All(char.IsDigit))
+                name = name[..^16];
         }
+        var destPath = Path.Combine(communityFolder, name);
+        EnsureDestinationFree(destPath);
+        await RestoreOneAsync(backupPath, destPath, progress, cancellationToken);
+    }
 
-        await _fileOps.CopyDirectoryAsync(backupPath, destPath, progress, cancellationToken);
+    private static void EnsureDestinationFree(string path)
+    {
+        if (Directory.Exists(path) || File.Exists(path) || JunctionHelper.IsJunction(path))
+            throw new IOException($"Destination already exists: {path}. Move or back it up before restoring; nothing was overwritten.");
+    }
+
+    private async Task RestoreOneAsync(string source, string dest, IProgress<FileOperationProgress>? progress, CancellationToken ct)
+    {
+        var stage = Path.Combine(Path.GetDirectoryName(dest)!, $".msfsmm-restore-{Guid.NewGuid():N}");
+        try
+        {
+            await _fileOps.CopyDirectoryAsync(source, stage, progress, ct);
+            var metadata = Path.Combine(stage, ".backup_meta.json");
+            if (File.Exists(metadata)) File.Delete(metadata);
+            ct.ThrowIfCancellationRequested();
+            Directory.Move(stage, dest);
+        }
+        finally
+        {
+            if (Directory.Exists(stage))
+                try { FileOperations.SafeDeleteDirectory(stage); } catch { }
+        }
     }
 
     /// <summary>
@@ -245,12 +269,12 @@ public class BackupManager
 
         foreach (var backup in ListBackups())
         {
-            if (backup.CreatedDate < cutoff)
+            // Only directories carrying our metadata are eligible for automatic deletion.
+            // Legacy backups and ZIPs have no reliable ownership marker; preserve them.
+            if (!backup.IsCompressed && backup.CreatedDate < cutoff &&
+                File.Exists(Path.Combine(backup.Path, ".backup_meta.json")))
             {
-                if (backup.IsCompressed)
-                    File.Delete(backup.Path);
-                else
-                    FileOperations.SafeDeleteDirectory(backup.Path);
+                FileOperations.SafeDeleteDirectory(backup.Path);
                 deleted++;
             }
         }

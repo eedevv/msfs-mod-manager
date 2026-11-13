@@ -21,6 +21,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         // Apply localization on load and when language changes
         Loaded += (_, _) => ApplyLocalization();
@@ -52,16 +53,18 @@ public partial class MainWindow : Window
     {
         var startupTimer = System.Diagnostics.Stopwatch.StartNew();
 
-        RestoreWindowPosition();
         await ViewModel.InitializeAsync();
+        RestoreWindowPosition();
 
         startupTimer.Stop();
 
         // V2 migration
         var migrator = new V2Migrator();
-        if (migrator.HasV2Data && ViewModel.Database != null)
+        if (migrator.HasV2Data && ViewModel.Database != null && !ViewModel.Settings.HasMigratedV2Profiles)
         {
             int profiles = migrator.ImportProfiles(ViewModel.Database);
+            ViewModel.Settings.HasMigratedV2Profiles = true;
+            ViewModel.SaveSettingsSync();
             if (profiles > 0)
                 ShowToast("V2 Import", $"Imported {profiles} profile(s) from V2", ToastNotification.ToastType.Info);
         }
@@ -83,10 +86,10 @@ public partial class MainWindow : Window
         else
         {
             // Show ready toast (don't show during tutorial)
-            if (ViewModel.DetectedInstallations.Count > 0)
+            if (!string.IsNullOrWhiteSpace(ViewModel.CommunityFolderPath) && System.IO.Directory.Exists(ViewModel.CommunityFolderPath))
                 ShowToast("Ready", $"{ViewModel.TotalModCount} mods loaded in {startupTimer.ElapsedMilliseconds}ms", ToastNotification.ToastType.Info);
             else
-                ShowToast("No MSFS Found", "Set a custom path in Settings", ToastNotification.ToastType.Warning);
+                ShowToast("Community Folder Not Found", "Check the selected folder in Settings", ToastNotification.ToastType.Warning);
 
             // Show donate reminder on 3rd launch, then every 10th
             var launches = ViewModel.Settings.LaunchCount;
@@ -220,8 +223,17 @@ public partial class MainWindow : Window
         catch { /* Watch folder path invalid or inaccessible */ }
     }
 
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.CommunityFolderPath)) return;
+        // These pages are initialized lazily and otherwise retain the old path.
+        BackupPage.SetCommunityFolder(ViewModel.CommunityFolderPath);
+        ProfilePage.SetCommunityFolder(ViewModel.CommunityFolderPath);
+    }
+
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LocalizationService.LanguageChanged -= _localizationHandler;
         _watchService?.Stop();
         _watchService?.Dispose();
@@ -430,7 +442,11 @@ public partial class MainWindow : Window
     {
         var mod = ViewModel.SelectedMod;
         if (mod == null) return;
-        await ViewModel.ToggleModAsync(mod);
+        if (!await ViewModel.ToggleModAsync(mod))
+        {
+            ShowToast("Toggle Failed", ViewModel.StatusText, ToastNotification.ToastType.Error);
+            return;
+        }
         var action = mod.Status == ModStatus.Enabled ? "Enabled" : "Disabled";
         ShowToast(action, mod.DisplayName,
             mod.Status == ModStatus.Enabled
@@ -469,11 +485,11 @@ public partial class MainWindow : Window
 
     private async void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        var settingsWindow = new SettingsWindow(ViewModel.Settings) { Owner = this };
+        var settingsWindow = new SettingsWindow(ViewModel.Settings, ViewModel.ActiveSimVersion) { Owner = this };
         if (settingsWindow.ShowDialog() == true)
         {
             await ViewModel.SaveSettingsAsync();
-            await ViewModel.RefreshModListAsync();
+            await ViewModel.ApplyCommunityFolderAsync();
             ShowToast("Settings Saved", "Changes applied", ToastNotification.ToastType.Success);
         }
     }
@@ -615,13 +631,14 @@ public partial class MainWindow : Window
             "Confirm Uninstall", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (result != MessageBoxResult.Yes) return;
 
-        int count = 0;
+        int count = 0, failed = 0;
         foreach (var mod in selected)
         {
-            try { ViewModel.UninstallMod(mod); count++; }
-            catch { }
+            if (ViewModel.TryUninstallMod(mod)) count++;
+            else failed++;
         }
-        ShowToast("Uninstalled", $"Removed {count} mod(s)", ToastNotification.ToastType.Info);
+        ShowToast("Uninstall", $"Removed {count}, failed {failed}",
+            failed > 0 ? ToastNotification.ToastType.Warning : ToastNotification.ToastType.Info);
     }
 
     // ── Drag & Drop ──

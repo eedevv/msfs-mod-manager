@@ -10,11 +10,13 @@ namespace ModInstaller.App.Views;
 public partial class SettingsWindow : Window
 {
     private readonly AppSettings _settings;
+    private readonly SimVersion _simVersion;
 
-    public SettingsWindow(AppSettings settings)
+    public SettingsWindow(AppSettings settings, SimVersion simVersion)
     {
         InitializeComponent();
         _settings = settings;
+        _simVersion = simVersion;
         LoadSettings();
         ApplyLocalization();
     }
@@ -39,7 +41,7 @@ public partial class SettingsWindow : Window
 
         // Community folder section
         CommunitySectionHeader.Text = LocalizationService.Get("settings_community").ToUpperInvariant();
-        CommunitySectionDesc.Text = LocalizationService.Get("settings_community_desc");
+        CommunitySectionDesc.Text = $"{LocalizationService.Get("settings_community_desc")} ({_simVersion})";
         UseCustomFolderLabel.Text = LocalizationService.Get("settings_custom_folder");
         BrowseCustomBtn.Content = LocalizationService.Get("settings_browse");
 
@@ -96,7 +98,7 @@ public partial class SettingsWindow : Window
 
         // Community folder
         UseCustomFolderCheck.IsChecked = _settings.UseCustomFolder;
-        CustomFolderBox.Text = _settings.CustomCommunityFolder2024 ?? _settings.CustomCommunityFolder2020 ?? "";
+        CustomFolderBox.Text = _settings.GetCustomCommunityFolder(_simVersion) ?? "";
 
         // Paths
         BackupDirBox.Text = _settings.BackupDirectory;
@@ -195,25 +197,14 @@ public partial class SettingsWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        // Language
-        if (LanguageCombo.SelectedItem is ComboBoxItem langItem && langItem.Tag is string langCode)
+        // Validate before changing shared settings so Cancel after an error has no side effects.
+        var useCustomFolder = UseCustomFolderCheck.IsChecked == true;
+        var customPath = CustomFolderBox.Text.Trim();
+        if (useCustomFolder && (string.IsNullOrWhiteSpace(customPath) || !Directory.Exists(customPath)))
         {
-            _settings.Language = langCode;
-            LocalizationService.SetLanguage(langCode);
-        }
-
-        // Validate custom community folder
-        _settings.UseCustomFolder = UseCustomFolderCheck.IsChecked == true;
-        if (_settings.UseCustomFolder && !string.IsNullOrWhiteSpace(CustomFolderBox.Text))
-        {
-            var customPath = CustomFolderBox.Text.Trim();
-            if (!Directory.Exists(customPath))
-            {
-                MessageBox.Show($"Community folder not found:\n{customPath}", "Invalid Path",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            _settings.CustomCommunityFolder2024 = customPath;
+            MessageBox.Show($"Select an existing Community folder for {_simVersion}:\n{customPath}", "Invalid Path",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
 
         // Validate backup dir (create if needed)
@@ -227,6 +218,16 @@ public partial class SettingsWindow : Window
                 return;
             }
         }
+
+        if (LanguageCombo.SelectedItem is ComboBoxItem langItem && langItem.Tag is string langCode)
+        {
+            _settings.Language = langCode;
+            LocalizationService.SetLanguage(langCode);
+        }
+
+        _settings.UseCustomFolder = useCustomFolder;
+        if (useCustomFolder)
+            _settings.SetCustomCommunityFolder(_simVersion, customPath);
 
         _settings.BackupDirectory = BackupDirBox.Text.Trim();
         _settings.ModLibraryDirectory = LibraryDirBox.Text.Trim();
