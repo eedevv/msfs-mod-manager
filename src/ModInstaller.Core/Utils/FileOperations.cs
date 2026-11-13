@@ -126,14 +126,39 @@ public class FileOperations
         if (!Directory.Exists(path)) return;
         try
         {
-            foreach (var file in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
-                File.SetAttributes(file, FileAttributes.Normal);
-            Directory.Delete(path, recursive: true);
+            DeleteDirectoryWithoutFollowingLinks(path);
         }
         catch (Exception ex)
         {
             throw new IOException($"Failed to delete directory {Path.GetFileName(path)}: {ex.Message}", ex);
         }
+    }
+
+    private static void DeleteDirectoryWithoutFollowingLinks(string path)
+    {
+        var attributes = File.GetAttributes(path);
+        if (attributes.HasFlag(FileAttributes.ReparsePoint))
+        {
+            Directory.Delete(path, recursive: false);
+            return;
+        }
+
+        var options = new EnumerationOptions { RecurseSubdirectories = false, AttributesToSkip = 0, IgnoreInaccessible = false };
+        foreach (var entry in Directory.EnumerateFileSystemEntries(path, "*", options))
+        {
+            var entryAttributes = File.GetAttributes(entry);
+            if (entryAttributes.HasFlag(FileAttributes.Directory))
+                DeleteDirectoryWithoutFollowingLinks(entry);
+            else if (entryAttributes.HasFlag(FileAttributes.ReparsePoint))
+                File.Delete(entry);
+            else
+            {
+                File.SetAttributes(entry, FileAttributes.Normal);
+                File.Delete(entry);
+            }
+        }
+        File.SetAttributes(path, FileAttributes.Normal);
+        Directory.Delete(path, recursive: false);
     }
 
     /// <summary>Checks containment on a path-component boundary, not a string prefix.</summary>

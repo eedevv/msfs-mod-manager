@@ -7,7 +7,7 @@ This beta is not ready to publish until the Windows release checklist passes. Te
 ### Changes so far
 - Size sorting uses numeric bytes; custom Community folders are applied for the selected simulator and propagated to backup and profile pages.
 - Install replacements require confirmation; staged replacements retain the displaced folder or link in a `.msfsmm-recovery-*` folder. Failed promotions roll back where possible.
-- Uninstall preserves link targets and resolves disabled-link markers for backups; disabled links are restored to their original target.
+- Uninstall preserves link targets and resolves disabled-link markers for backups; disabled links are restored to their original target. Directory deletion avoids traversing nested reparse points.
 - Full and ZIP backups can be restored; optional replacement keeps the displaced folder or link. Automatic cleanup skips unmarked and ZIP backups.
 - ZIP archives are validated before extraction, with traversal and link checks and uncompressed-size and entry-count limits. ZIP extraction no longer falls back to external extractors.
 - Extractor output is drained asynchronously, and V2 profile import no longer overwrites existing profiles or repeats after successful migration.

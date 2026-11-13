@@ -220,6 +220,13 @@ internal static class Program
             service.UninstallMod(new Mod { FolderName = "external-mod", FullPath = link }, createBackup: true);
             Check(!Directory.Exists(link) && File.Exists(Path.Combine(external, "keep.txt")), "Uninstall must preserve external link targets.");
 
+            var nestedContainer = Path.Combine(root, "delete-container");
+            Directory.CreateDirectory(nestedContainer);
+            JunctionHelper.CreateJunction(Path.Combine(nestedContainer, "external-link"), external);
+            FileOperations.SafeDeleteDirectory(nestedContainer);
+            Check(!Directory.Exists(nestedContainer) && File.Exists(Path.Combine(external, "keep.txt")),
+                "Deleting a folder must not follow nested junctions or delete their targets.");
+
             var backupManager = new BackupManager(settings, new FileOperations());
             var full = Path.Combine(settings.BackupDirectory, "FullBackup_20260101_120000");
             Directory.CreateDirectory(Path.Combine(full, "mod-a"));
