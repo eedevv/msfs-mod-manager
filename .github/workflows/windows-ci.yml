@@ -16,7 +16,16 @@ jobs:
       - name: Build
         run: dotnet build MSFSModManager.sln -c Release
       - name: Regression checks
-        run: dotnet run --project tests/ModInstaller.Regression -c Release
+        shell: pwsh
+        run: |
+          $output = dotnet run --project tests/ModInstaller.Regression -c Release 2>&1 | Out-String
+          $result = $LASTEXITCODE
+          Write-Output $output
+          if ($result -ne 0) {
+            $message = $output.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error::$message"
+            exit $result
+          }
       - name: Publish
         run: dotnet publish src/ModInstaller.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
       - uses: actions/upload-artifact@v4
