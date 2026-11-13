@@ -152,6 +152,17 @@ internal static class Program
             Check(!Directory.Exists(link) && File.Exists(Path.Combine(external, "keep.txt")), "Uninstall must preserve external link targets.");
 
             var backupManager = new BackupManager(settings, new FileOperations());
+            var full = Path.Combine(settings.BackupDirectory, "FullBackup_20260101_120000");
+            Directory.CreateDirectory(Path.Combine(full, "mod-a"));
+            Directory.CreateDirectory(Path.Combine(full, "mod-b"));
+            File.WriteAllText(Path.Combine(full, "mod-a", "a.txt"), "a");
+            File.WriteAllText(Path.Combine(full, "mod-b", "b.txt"), "b");
+            backupManager.RestoreBackupAsync(full, community).GetAwaiter().GetResult();
+            Check(File.Exists(Path.Combine(community, "mod-a", "a.txt")) && File.Exists(Path.Combine(community, "mod-b", "b.txt")), "Full backup must restore each mod at Community root.");
+            rejected = false;
+            try { backupManager.RestoreBackupAsync(full, community, overwrite: true).GetAwaiter().GetResult(); }
+            catch (IOException) { rejected = true; }
+            Check(rejected && File.ReadAllText(Path.Combine(community, "mod-a", "a.txt")) == "a", "Restore must not overwrite existing mods.");
             var unrelated = Path.Combine(settings.BackupDirectory, "unrelated");
             Directory.CreateDirectory(unrelated);
             Directory.SetCreationTime(unrelated, DateTime.Now.AddDays(-50));
@@ -160,6 +171,7 @@ internal static class Program
         }
         finally
         {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
     }
