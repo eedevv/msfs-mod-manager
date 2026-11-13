@@ -147,6 +147,12 @@ internal static class Program
             var second = Path.Combine(root, "2024");
             using (var db = new ModDatabase(Path.Combine(root, "profiles.db")))
             {
+                db.UpsertMod(new Mod { FolderName = "legacy-mod", FullPath = "old" });
+                db.UpsertCommunityMod(first, new Mod { FolderName = "same", FullPath = "first" });
+                db.UpsertCommunityMod(second, new Mod { FolderName = "SAME", FullPath = "second" });
+                Check(db.GetCommunityMods(first).Single().FullPath == "first" && db.GetCommunityMods(second).Single().FullPath == "second", "Mod records must be scoped to their Community folder.");
+                db.RemoveCommunityMod(first, "SAME");
+                Check(db.GetCommunityMods(first).Count == 0 && db.GetCommunityMods(second).Count == 1 && db.GetAllMods().Count == 1, "Removing scoped records must not affect other or legacy records.");
                 db.SaveProfile(new ModProfile { Name = "legacy", EnabledMods = ["old"] });
                 db.SaveCommunityProfile(first, new ModProfile { Name = "shared", EnabledMods = ["first"] });
                 db.SaveCommunityProfile(second, new ModProfile { Name = "shared", EnabledMods = ["second"] });
@@ -283,7 +289,7 @@ internal static class Program
             Directory.CreateDirectory(external);
             File.WriteAllText(Path.Combine(external, "keep.txt"), "external");
             JunctionHelper.CreateJunction(link, external);
-            service.UninstallMod(new Mod { FolderName = "external-mod", FullPath = link }, createBackup: true);
+            service.UninstallMod(new Mod { FolderName = "external-mod", FullPath = link }, community, createBackup: true);
             Check(!Directory.Exists(link) && File.Exists(Path.Combine(external, "keep.txt")), "Uninstall must preserve external link targets.");
 
             var nestedContainer = Path.Combine(root, "delete-container");

@@ -176,7 +176,7 @@ public class ModInstallerService
         if (mod != null)
         {
             mod.InstalledDate = DateTime.Now;
-            _db.UpsertMod(mod);
+            _db.UpsertCommunityMod(communityFolder, mod);
             _db.LogOperation("Install", mod.FolderName, $"Installed from {modSourceDir}");
         }
 
@@ -186,8 +186,14 @@ public class ModInstallerService
     /// <summary>
     /// Uninstalls a mod from the Community folder.
     /// </summary>
-    public void UninstallMod(Mod mod, bool createBackup = false)
+    public void UninstallMod(Mod mod, string communityFolder, bool createBackup = false)
     {
+        var expectedParent = mod.Status == ModStatus.Disabled
+            ? new DisabledModStorage().GetDirectory(communityFolder) : Path.GetFullPath(communityFolder);
+        var actualParent = Path.GetDirectoryName(Path.GetFullPath(mod.FullPath));
+        if (actualParent == null || !string.Equals(Path.TrimEndingDirectorySeparator(actualParent),
+                Path.TrimEndingDirectorySeparator(expectedParent), StringComparison.OrdinalIgnoreCase))
+            throw new IOException("The mod does not belong to the selected Community folder; nothing was removed.");
         var contentPath = GetDisabledContentPath(mod.FullPath) ?? mod.FullPath;
         if (JunctionHelper.IsJunction(mod.FullPath))
             contentPath = JunctionHelper.GetJunctionTarget(mod.FullPath)
@@ -211,7 +217,7 @@ public class ModInstallerService
             FileOperations.SafeDeleteDirectory(mod.FullPath);
 
         _db.LogOperation("Uninstall", mod.FolderName, createBackup ? "Backed up before uninstall" : null);
-        _db.RemoveMod(mod.FolderName);
+        _db.RemoveCommunityMod(communityFolder, mod.FolderName);
     }
 
     /// <summary>
@@ -268,7 +274,7 @@ public class ModInstallerService
 
         mod.Status = ModStatus.Enabled;
         mod.FullPath = communityPath;
-        _db.UpsertMod(mod);
+        _db.UpsertCommunityMod(communityFolder, mod);
         _db.LogOperation("Enable", mod.FolderName);
     }
 
@@ -307,7 +313,7 @@ public class ModInstallerService
 
         mod.Status = ModStatus.Disabled;
         mod.FullPath = disabledPath;
-        _db.UpsertMod(mod);
+        _db.UpsertCommunityMod(communityFolder, mod);
         _db.LogOperation("Disable", mod.FolderName);
     }
 

@@ -11,7 +11,8 @@ The beta must remain a prerelease, not replace the latest stable release. Do not
 - [ ] Test recovery, unusual reparse points, copy failures, full backup and marker migration on Windows. Replacement rolls back a failed promotion where possible, but batch operations are not transactional and ambiguous interruptions require manual review.
 - [x] Isolate disabled mods and new library content by Community folder; ask before assigning old shared disabled data.
 - [x] Scope new profiles to a Community folder; keep legacy profiles unassigned and allow explicit non-destructive copies.
-- [ ] Isolate mod database and note identity by installation; review migration and alias paths.
+- [x] Scope new mod database records by Community folder and preserve the old globally keyed records without guessing ownership.
+- [ ] Isolate note identity; review legacy metadata migration and alias paths.
 
 ## Phase 2 — Security and correctness
 
@@ -46,7 +47,7 @@ Numbers match the 37-item audit in the conversation. "Partial" means mitigation 
 | 11–13: full/ZIP backups and restore safety | 1 | Partial: ZIP and full restore support staged replacement with old entries retained; full operations can partially complete. |
 | 14: unsafe cleanup | 1 | Partial: unmarked items excluded from automatic cleanup; strengthen backup ownership identification and test. |
 | 15: repeated V2 profile import | 1 | Existing names are preserved and migration is recorded; test migration failures and legacy formats. |
-| 16–17: shared disabled storage and global identities | 1 | Partial: disabled and new library files are scoped with explicit legacy import; new profiles are scoped and legacy profiles require explicit assignment; mod metadata and notes still need isolation. |
+| 16–17: shared disabled storage and global identities | 1 | Partial: disabled and new library files are scoped with explicit legacy import; new profiles are scoped and legacy profiles require explicit assignment; new mod metadata is scoped while legacy records remain unassigned; notes still need isolation. |
 | 18–21: extraction path validation, scanning, process and command safety | 2 | Partial: ZIP path boundary and cancellation fixed, unsafe PowerShell fallback removed and pipes drained; harden all fallback formats, limits and scanning. |
 | 22–23: archive root naming and multi-package archives | 2 | Implemented for detected packages; partial failure and unusual archives need further work. |
 | 24–25: detection and multi-install custom settings | 2 | Open. |

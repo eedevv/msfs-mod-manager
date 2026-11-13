@@ -240,7 +240,7 @@ public partial class MainViewModel : ObservableObject
             foreach (var mod in sorted)
                 Mods.Add(mod);
 
-            _db?.UpsertMods(sorted);
+            _db?.UpsertCommunityMods(communityFolder, sorted);
             LoadModNotes();
             UpdateStats();
             StatusText = recoveryErrors.Count == 0 ? $"Loaded {mods.Count} mods" :
@@ -355,7 +355,7 @@ public partial class MainViewModel : ObservableObject
         if (mod == null || _installer == null) return false;
         try
         {
-            _installer.UninstallMod(mod, createBackup: true);
+            _installer.UninstallMod(mod, CommunityFolderPath, createBackup: true);
             Mods.Remove(mod);
             UpdateStats();
             StatusText = $"Uninstalled {mod.DisplayName}";
