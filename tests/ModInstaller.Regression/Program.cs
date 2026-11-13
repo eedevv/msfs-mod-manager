@@ -430,8 +430,14 @@ internal static class Program
             var unrelated = Path.Combine(settings.BackupDirectory, "unrelated");
             Directory.CreateDirectory(unrelated);
             Directory.SetCreationTime(unrelated, DateTime.Now.AddDays(-50));
+            File.WriteAllText(Path.Combine(unrelated, ".backup_meta.json"), "{\"Kind\":\"FullBackup\"}");
+            var managed = Path.Combine(settings.BackupDirectory, "managed");
+            Directory.CreateDirectory(managed);
+            File.WriteAllText(Path.Combine(managed, ".backup_meta.json"), "{\"Manager\":\"MSFSModManager\",\"FormatVersion\":1,\"Kind\":\"FullBackup\"}");
+            Directory.SetCreationTime(managed, DateTime.Now.AddDays(-50));
             backupManager.CleanOldBackups(30);
-            Check(Directory.Exists(unrelated), "Cleanup must not delete an unmarked folder.");
+            Check(Directory.Exists(unrelated) && !Directory.Exists(managed),
+                "Cleanup must preserve legacy generic markers and only remove explicitly marked managed backups.");
         }
         finally
         {

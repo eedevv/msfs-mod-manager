@@ -6,7 +6,7 @@ The beta must remain a prerelease, not replace the latest stable release. Do not
 
 - [x] Require confirmation for install replacement; enable/disable collisions are rejected. Replaced items are retained for recovery.
 - [x] Stage new copies and never delete a junction target during uninstall. Resolve disabled junction markers for enable and backup.
-- [x] Restore full backups to individual folders, with optional staged replacement; restrict automatic cleanup to metadata-marked directories.
+- [x] Restore full backups to individual folders, with optional staged replacement; restrict automatic cleanup to directories with a current-format manager marker; retain older backups.
 - [x] Avoid overwriting existing V3 profiles during V2 import and avoid repeating the import.
 - [ ] Test recovery, unusual reparse points, copy failures, full backup and marker migration on Windows. Replacement rolls back a failed promotion where possible, but batch operations are not transactional and ambiguous interruptions require manual review.
 - [x] Isolate disabled mods and new library content by Community folder; ask before assigning old shared disabled data.
@@ -46,7 +46,7 @@ Numbers match the 37-item audit in the conversation. "Partial" means mitigation 
 | 7: external junction targets | 1 | Partial: uninstall preserves all link targets; add ownership tracking and safe cleanup. |
 | 8–10: disabled junction markers, collisions and backups | 1 | Partial: marker targets are respected, collisions rejected, target backed up; test failure and legacy cases, and add ownership-aware cleanup. |
 | 11–13: full/ZIP backups and restore safety | 1 | Partial: ZIP and full restore support staged replacement with old entries retained; full operations can partially complete. |
-| 14: unsafe cleanup | 1 | Partial: unmarked items excluded from automatic cleanup; strengthen backup ownership identification and test. |
+| 14: unsafe cleanup | 1 | Partial: cleanup requires a current-format manager marker and skips links, legacy backups and ZIPs; marker ownership is not cryptographically authenticated. |
 | 15: repeated V2 profile import | 1 | Existing names are preserved and migration is recorded; test migration failures and legacy formats. |
 | 16–17: shared disabled storage and global identities | 1 | Partial: disabled and new library files are scoped with explicit legacy import; new profiles are scoped and legacy profiles require explicit assignment; new mod metadata and notes are scoped; legacy records remain unassigned, with explicit non-overwriting note import. |
 | 18–21: extraction path validation, scanning, process and command safety | 2 | Partial: ZIP path boundary and cancellation fixed, unsafe PowerShell fallback removed and pipes drained; harden all fallback formats, limits and scanning. |

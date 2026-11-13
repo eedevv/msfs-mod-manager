@@ -51,6 +51,9 @@ public class BackupManager
         var metaPath = Path.Combine(backupPath, ".backup_meta.json");
         var meta = System.Text.Json.JsonSerializer.Serialize(new
         {
+            Manager = "MSFSModManager",
+            Kind = "ModBackup",
+            FormatVersion = 1,
             ModName = mod.FolderName,
             mod.Title,
             mod.Version,
@@ -145,7 +148,7 @@ public class BackupManager
         }
 
         await File.WriteAllTextAsync(Path.Combine(backupDir, ".backup_meta.json"),
-            "{\"Kind\":\"FullBackup\"}", cancellationToken);
+            "{\"Manager\":\"MSFSModManager\",\"Kind\":\"FullBackup\",\"FormatVersion\":1}", cancellationToken);
         return backupDir;
     }
 
@@ -249,7 +252,7 @@ public class BackupManager
         {
             await _fileOps.CopyDirectoryAsync(source, stage, progress, ct);
             var metadata = Path.Combine(stage, ".backup_meta.json");
-            if (File.Exists(metadata)) File.Delete(metadata);
+            if (HasManagedBackupMarker(stage)) File.Delete(metadata);
             ct.ThrowIfCancellationRequested();
             RecoverableSwap.Commit(stage, dest, overwrite);
         }
@@ -324,19 +327,35 @@ public class BackupManager
         var cutoff = DateTime.Now.AddDays(-olderThanDays);
         int deleted = 0;
 
-        foreach (var backup in ListBackups())
+        if (!Directory.Exists(_settings.BackupDirectory)) return 0;
+        foreach (var path in Directory.EnumerateDirectories(_settings.BackupDirectory))
         {
-            // Only directories carrying our metadata are eligible for automatic deletion.
-            // Legacy backups and ZIPs have no reliable ownership marker; preserve them.
-            if (!backup.IsCompressed && backup.CreatedDate < cutoff &&
-                File.Exists(Path.Combine(backup.Path, ".backup_meta.json")))
-            {
-                FileOperations.SafeDeleteDirectory(backup.Path);
-                deleted++;
-            }
+            // Do not follow a directory link or assume older generic metadata proves ownership.
+            if (File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint) ||
+                Directory.GetCreationTime(path) >= cutoff || !HasManagedBackupMarker(path)) continue;
+            FileOperations.SafeDeleteDirectory(path);
+            deleted++;
         }
 
         return deleted;
+    }
+    private static bool HasManagedBackupMarker(string directory)
+    {
+        var path = Path.Combine(directory, ".backup_meta.json");
+        try
+        {
+            if (!File.Exists(path) || File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint) || new FileInfo(path).Length > 65536)
+                return false;
+            using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            var root = json.RootElement;
+            return root.TryGetProperty("Manager", out var manager) && manager.GetString() == "MSFSModManager" &&
+                root.TryGetProperty("FormatVersion", out var version) && version.TryGetInt32(out var v) && v == 1 &&
+                root.TryGetProperty("Kind", out var kind) && kind.GetString() is "ModBackup" or "FullBackup";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 }
 
