@@ -28,7 +28,14 @@ jobs:
           }
       - name: Publish
         run: dotnet publish src/ModInstaller.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
+      - name: Calculate SHA-256
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash publish/MSFSModManager.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -Path publish/MSFSModManager.exe.sha256 -Value "$hash  MSFSModManager.exe" -Encoding ascii
       - uses: actions/upload-artifact@v4
         with:
           name: MSFSModManager-win-x64
-          path: publish/MSFSModManager.exe
+          path: |
+            publish/MSFSModManager.exe
+            publish/MSFSModManager.exe.sha256
