@@ -37,6 +37,9 @@ public class ModScanner
             cancellationToken.ThrowIfCancellationRequested();
 
             var folderName = Path.GetFileName(dir);
+            if (folderName.StartsWith(".msfsmm-stage-", StringComparison.OrdinalIgnoreCase) ||
+                folderName.StartsWith(".msfsmm-restore-", StringComparison.OrdinalIgnoreCase))
+                continue;
             progress?.Report($"Scanning {folderName}...");
 
             var mod = await ScanModDirectoryAsync(dir, simVersion);
@@ -160,7 +163,7 @@ public class ModScanner
             "AIRCRAFT" or "aircraft" => ModType.Aircraft,
             "SCENERY" or "scenery" => ModType.Scenery,
             "LIVERY" or "livery" => ModType.Livery,
-            "INSTRUMENT" or "instruments" => ModType.Instruments,
+            "instrument" or "instruments" => ModType.Instruments,
             "MISSION" or "missions" or "mission" => ModType.Missions,
             _ => DetectModTypeFromStructure(modPath)
         };

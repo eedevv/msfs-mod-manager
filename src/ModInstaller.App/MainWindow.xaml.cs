@@ -208,6 +208,9 @@ public partial class MainWindow : Window
 
     private void StartWatchFolder()
     {
+        _watchService?.Dispose();
+        _watchService = null;
+        if (!ViewModel.Settings.WatchFolderEnabled) return;
         try
         {
             _watchService = new WatchFolderService();
@@ -220,7 +223,12 @@ public partial class MainWindow : Window
             };
             _watchService.Start(ViewModel.Settings.WatchFolderPath);
         }
-        catch { /* Watch folder path invalid or inaccessible */ }
+        catch (Exception ex)
+        {
+            _watchService?.Dispose();
+            _watchService = null;
+            ShowToast("Watch Folder Error", ex.Message, ToastNotification.ToastType.Warning);
+        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -490,6 +498,7 @@ public partial class MainWindow : Window
         {
             await ViewModel.SaveSettingsAsync();
             await ViewModel.ApplyCommunityFolderAsync();
+            StartWatchFolder();
             ShowToast("Settings Saved", "Changes applied", ToastNotification.ToastType.Success);
         }
     }

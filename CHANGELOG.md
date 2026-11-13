@@ -12,6 +12,7 @@ This beta is not ready to publish until the Windows release checklist passes. Te
 - ZIP path containment is boundary-aware; unsafe traversal and cancellation do not fall through to other ZIP extractors. PowerShell extraction fallback was removed.
 - Extractor output is drained asynchronously, and V2 profile import no longer overwrites existing profiles or repeats after successful migration.
 - Improved status change notifications, uninstall/toggle reporting, window position restoration, empty analytics and conflict wording.
+- Apply watch-folder settings immediately and avoid listing temporary staging folders as mods.
 
 ### Known limitations
 - Existing-mod replacement and restore-overwrite are temporarily disabled; move or back up the existing destination manually first. Uninstall preserves link targets, so library folders may require manual cleanup.

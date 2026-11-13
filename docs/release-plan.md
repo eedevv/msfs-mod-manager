@@ -17,10 +17,15 @@ The beta must remain a prerelease, not replace the latest stable release. Do not
 - [x] Fix size sort and custom Community folder selection; propagate the selected path to profile/backup panels.
 - [x] Preserve mod change notifications, truthful batch uninstall/toggle results, window position, and empty analytics.
 - [ ] Review all extractor formats and reparse points, archive limits, package-root/multi-package detection, security scan integration, and simulator detection.
-- [ ] Fix operation concurrency, conflict-scan completeness, per-mod scan errors, watch-folder changes and advertised-but-unwired features.
+- [x] Apply watch-folder changes when Settings is saved.
+- [ ] Fix operation concurrency, conflict-scan completeness, per-mod scan errors and advertised-but-unwired features.
 
 ## Phase 3 — Scale and release
 
 - [ ] Implement incremental/background scanning and bounded conflict indexing; synchronize database access; validate large libraries.
 - [ ] Complete Windows automated and manual tests; ensure release notes honestly list remaining limitations.
 - [ ] Publish a tested single-file Windows artifact and checksums as a GitHub prerelease, without marking it latest.
+
+## Verification status
+
+Windows build, regression checks and single-file publish passed in GitHub Actions on the working branch. The manual checklist and outstanding safety/security work remain open; the passing checks are not full simulator validation.
