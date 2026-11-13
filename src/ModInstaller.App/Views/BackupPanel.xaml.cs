@@ -92,12 +92,12 @@ public partial class BackupPanel : UserControl
         if (path == null) return;
 
         var confirmation = MessageBox.Show(
-            "Restore this backup to the current Community folder? Existing mods will not be overwritten.",
-            "Confirm Restore", MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (confirmation != MessageBoxResult.Yes) return;
+            $"Restore this backup to:\n{_communityFolder}\n\nChoose Yes to replace existing mods (original folders are retained in .msfsmm-recovery folders). Choose No to restore only if no destination exists.",
+            "Confirm Restore", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+        if (confirmation == MessageBoxResult.Cancel) return;
         try
         {
-            await _backupManager.RestoreBackupAsync(path, _communityFolder, overwrite: false);
+            await _backupManager.RestoreBackupAsync(path, _communityFolder, overwrite: confirmation == MessageBoxResult.Yes);
             _showToast?.Invoke("Restored", System.IO.Path.GetFileName(path), ToastNotification.ToastType.Success);
         }
         catch (Exception ex)

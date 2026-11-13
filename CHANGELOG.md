@@ -6,17 +6,19 @@ This beta is not ready to publish until the Windows release checklist passes. Te
 
 ### Changes so far
 - Size sorting uses numeric bytes; custom Community folders are applied for the selected simulator and propagated to backup and profile pages.
-- Install and enable/disable collisions are rejected instead of overwriting existing files. New install copies are staged.
+- Install replacements require confirmation; staged replacements retain the displaced folder or link in a `.msfsmm-recovery-*` folder. Failed promotions roll back where possible.
 - Uninstall preserves link targets and resolves disabled-link markers for backups; disabled links are restored to their original target.
-- Full backups restore each contained mod without overwriting; automatic cleanup skips unmarked and ZIP backups.
-- ZIP path containment is boundary-aware; unsafe traversal and cancellation do not fall through to other ZIP extractors. PowerShell extraction fallback was removed.
+- Full and ZIP backups can be restored; optional replacement keeps the displaced folder or link. Automatic cleanup skips unmarked and ZIP backups.
+- ZIP archives are validated before extraction, with traversal and link checks and uncompressed-size and entry-count limits. ZIP extraction no longer falls back to external extractors.
 - Extractor output is drained asynchronously, and V2 profile import no longer overwrites existing profiles or repeats after successful migration.
 - Improved status change notifications, uninstall/toggle reporting, window position restoration, empty analytics and conflict wording.
 - Apply watch-folder settings immediately and avoid listing temporary staging folders as mods.
+- Disabled mods and newly managed library content are separated by Community folder. Legacy disabled mods require explicit assignment; collisions are left untouched.
+- Archives containing multiple detected packages install each package, and root-level ZIPs use a stable package folder name.
 
 ### Known limitations
-- Existing-mod replacement and restore-overwrite are temporarily disabled; move or back up the existing destination manually first. Uninstall preserves link targets, so library folders may require manual cleanup.
-- Disabled-mod storage is still shared across installations. Do not switch simulators with disabled mods without an independent backup.
-- ZIP backup restore is not yet supported. Full restore can be partially completed if a later mod fails.
+- Replaced folders and links are retained in `.msfsmm-recovery-*` folders inside Community and need manual cleanup. Uninstall also preserves link targets; library folders may require manual cleanup.
+- Legacy disabled mods cannot be assigned to the right installation automatically. Review the migration prompt carefully and keep an independent backup; global database identity and profile isolation remain unfinished.
+- Full restore and multi-package installs can be partially completed if a later mod fails. Recovery and interruption handling need further testing.
 - Extraction and junction changes require Windows validation; untrusted archives should be treated with care.
 - The remaining audit and scaling items are tracked in `docs/release-plan.md`.

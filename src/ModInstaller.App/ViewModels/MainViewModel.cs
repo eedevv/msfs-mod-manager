@@ -190,6 +190,9 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
+            var recoveryErrors = RecoverableSwap.RecoverInterrupted(communityFolder);
+            if (recoveryErrors.Count > 0)
+                throw new IOException("Could not recover an interrupted replacement: " + string.Join("; ", recoveryErrors));
             var progress = new Progress<string>(msg =>
             {
                 if (generation == _scanGeneration) StatusText = msg;
@@ -313,7 +316,11 @@ public partial class MainViewModel : ObservableObject
 
             StatusText = $"Installing from {Path.GetFileName(path)}...";
             var mod = await _installer.InstallModAsync(
-                path, CommunityFolderPath, ActiveSimVersion, _settings.UseJunctions, progress);
+                path, CommunityFolderPath, ActiveSimVersion, _settings.UseJunctions, progress,
+                confirmReplacement: destination => System.Windows.MessageBox.Show(
+                    $"Replace the existing mod at:\n{destination}\n\nThe previous folder or link will be retained in a .msfsmm-recovery folder inside Community.",
+                    "Confirm Replacement", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning)
+                    == System.Windows.MessageBoxResult.Yes);
 
             if (mod != null)
             {

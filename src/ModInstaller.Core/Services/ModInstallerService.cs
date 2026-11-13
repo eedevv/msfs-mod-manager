@@ -32,7 +32,8 @@ public class ModInstallerService
         SimVersion simVersion,
         bool useJunction,
         IProgress<FileOperationProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<string, bool>? confirmReplacement = null)
     {
         string modSourceDir;
         string? tempDir = null;
@@ -56,19 +57,22 @@ public class ModInstallerService
                     ? Path.GetFileNameWithoutExtension(sourcePath) : Path.GetFileName(root)).ToList();
                 if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Count)
                     throw new IOException("Archive contains duplicate or invalid package names; nothing was installed.");
-                // Check all package destinations before installing any package.
+                // Ask about all existing destinations before installing any package.
+                var replacements = new List<bool>();
                 foreach (var name in names)
                 {
                     var destination = Path.Combine(communityFolder, name);
-                    var library = Path.Combine(new DisabledModStorage().GetLibraryDirectory(_settings.ModLibraryDirectory, communityFolder), name);
-                    if (Directory.Exists(destination) || File.Exists(destination) || JunctionHelper.IsJunction(destination) ||
-                        (useJunction && (Directory.Exists(library) || File.Exists(library) || JunctionHelper.IsJunction(library))))
-                        throw new IOException($"Destination already exists for {name}; nothing was installed.");
+                    var exists = Directory.Exists(destination) || JunctionHelper.IsJunction(destination);
+                    if (File.Exists(destination) && !exists)
+                        throw new IOException($"A file exists at {destination}; nothing was installed.");
+                    if (exists && (confirmReplacement == null || !confirmReplacement(destination)))
+                        throw new IOException($"Replacement declined for {name}; nothing was installed.");
+                    replacements.Add(exists);
                 }
                 Mod? lastArchiveMod = null;
                 for (int i = 0; i < modRoots.Count; i++)
                     lastArchiveMod = await InstallSingleModAsync(modRoots[i], communityFolder, simVersion, useJunction,
-                        progress, cancellationToken, names[i]);
+                        progress, cancellationToken, names[i], replacements[i]);
                 return lastArchiveMod;
             }
             else if (Directory.Exists(sourcePath))
@@ -87,7 +91,8 @@ public class ModInstallerService
                     Mod? lastMod = null;
                     foreach (var subMod in subMods)
                     {
-                        lastMod = await InstallSingleModAsync(subMod, communityFolder, simVersion, useJunction, progress, cancellationToken);
+                        lastMod = await InstallSingleModAsync(subMod, communityFolder, simVersion, useJunction, progress, cancellationToken,
+                            confirmReplacement: confirmReplacement);
                     }
                     return lastMod;
                 }
@@ -99,7 +104,8 @@ public class ModInstallerService
                 throw new FileNotFoundException($"Source not found: {sourcePath}");
             }
 
-            return await InstallSingleModAsync(modSourceDir, communityFolder, simVersion, useJunction, progress, cancellationToken);
+            return await InstallSingleModAsync(modSourceDir, communityFolder, simVersion, useJunction, progress, cancellationToken,
+                confirmReplacement: confirmReplacement);
         }
         finally
         {
@@ -118,41 +124,51 @@ public class ModInstallerService
         bool useJunction,
         IProgress<FileOperationProgress>? progress,
         CancellationToken cancellationToken,
-        string? folderName = null)
+        string? folderName = null,
+        bool? approvedReplacement = null,
+        Func<string, bool>? confirmReplacement = null)
     {
         var modFolderName = folderName ?? Path.GetFileName(Path.TrimEndingDirectorySeparator(modSourceDir));
         var destPath = Path.Combine(communityFolder, modFolderName);
 
-        // Check for existing mod
-        if (Directory.Exists(destPath) || JunctionHelper.IsJunction(destPath))
-        {
-            throw new IOException($"A mod already exists at {destPath}. Remove or back it up before installing a replacement; no files were changed.");
-        }
+        var exists = Directory.Exists(destPath) || JunctionHelper.IsJunction(destPath);
+        if (File.Exists(destPath) && !exists)
+            throw new IOException($"A file already exists at {destPath}.");
+        var overwrite = approvedReplacement ?? (exists && confirmReplacement?.Invoke(destPath) == true);
+        if (exists && !overwrite)
+            throw new IOException($"A mod already exists at {destPath}. Replacement was not approved.");
 
         var baseDir = useJunction
             ? new DisabledModStorage().GetLibraryDirectory(_settings.ModLibraryDirectory, communityFolder)
             : communityFolder;
         Directory.CreateDirectory(baseDir);
         var finalContentPath = useJunction ? Path.Combine(baseDir, modFolderName) : destPath;
-        if (Directory.Exists(finalContentPath) || JunctionHelper.IsJunction(finalContentPath))
-            throw new IOException($"Destination already exists: {finalContentPath}. No files were changed.");
+        // Never replace or delete an existing library target; it may still be shared.
+        if (useJunction && (Directory.Exists(finalContentPath) || File.Exists(finalContentPath) || JunctionHelper.IsJunction(finalContentPath)))
+            finalContentPath = Path.Combine(baseDir, $"{modFolderName}__{Guid.NewGuid():N}");
 
-        // Stage first so a failed copy never leaves a partial installed mod.
         var stagePath = Path.Combine(baseDir, $".msfsmm-stage-{Guid.NewGuid():N}");
+        string? stagedLink = null;
         try
         {
             await _fileOps.CopyDirectoryAsync(modSourceDir, stagePath, progress, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            Directory.Move(stagePath, finalContentPath);
             if (useJunction)
-                JunctionHelper.CreateJunction(destPath, finalContentPath);
+            {
+                Directory.Move(stagePath, finalContentPath);
+                stagedLink = Path.Combine(communityFolder, $".msfsmm-stage-{Guid.NewGuid():N}");
+                JunctionHelper.CreateJunction(stagedLink, finalContentPath);
+                RecoverableSwap.Commit(stagedLink, destPath, overwrite);
+            }
+            else
+                RecoverableSwap.Commit(stagePath, destPath, overwrite);
         }
         finally
         {
+            if (stagedLink != null && JunctionHelper.IsJunction(stagedLink))
+                try { JunctionHelper.RemoveJunction(stagedLink); } catch { }
             if (Directory.Exists(stagePath))
-            {
                 try { FileOperations.SafeDeleteDirectory(stagePath); } catch { }
-            }
         }
 
         // Scan the installed mod

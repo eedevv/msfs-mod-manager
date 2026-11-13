@@ -172,6 +172,12 @@ internal static class Program
             catch (IOException) { rejected = true; }
             Check(rejected && File.ReadAllText(Path.Combine(existing, "keep.txt")) == "original", "Existing destination must not be overwritten.");
 
+            service.InstallModAsync(source, community, SimVersion.MSFS2024, false,
+                confirmReplacement: _ => true).GetAwaiter().GetResult();
+            Check(File.Exists(Path.Combine(existing, "manifest.json")), "Approved replacement should install staged content.");
+            Check(Directory.GetDirectories(community, RecoverableSwap.RecoveryPrefix + "*")
+                .Any(r => File.Exists(Path.Combine(r, "original", "keep.txt"))), "Approved replacement must preserve the prior mod.");
+
             var rootZip = Path.Combine(root, "root-pack.zip");
             ZipFile.CreateFromDirectory(source, rootZip);
             service.InstallModAsync(rootZip, community, SimVersion.MSFS2024, false).GetAwaiter().GetResult();
@@ -199,6 +205,13 @@ internal static class Program
             var targetC = JunctionHelper.GetJunctionTarget(Path.Combine(thirdCommunity, "test-mod"));
             Check(targetB != null && targetC != null && targetB != targetC, "Each Community folder must use its own library target.");
 
+            var oldTarget = targetB!;
+            service.InstallModAsync(source, secondCommunity, SimVersion.MSFS2020, true,
+                confirmReplacement: _ => true).GetAwaiter().GetResult();
+            var newTarget = JunctionHelper.GetJunctionTarget(Path.Combine(secondCommunity, "test-mod"));
+            Check(newTarget != null && newTarget != oldTarget && Directory.Exists(oldTarget),
+                "Junction replacement must preserve the original target and use a separate new target.");
+
             var external = Path.Combine(root, "external");
             var link = Path.Combine(community, "external-mod");
             Directory.CreateDirectory(external);
@@ -215,10 +228,26 @@ internal static class Program
             File.WriteAllText(Path.Combine(full, "mod-b", "b.txt"), "b");
             backupManager.RestoreBackupAsync(full, community).GetAwaiter().GetResult();
             Check(File.Exists(Path.Combine(community, "mod-a", "a.txt")) && File.Exists(Path.Combine(community, "mod-b", "b.txt")), "Full backup must restore each mod at Community root.");
+            File.WriteAllText(Path.Combine(community, "mod-a", "a.txt"), "previous");
+            backupManager.RestoreBackupAsync(full, community, overwrite: true).GetAwaiter().GetResult();
+            Check(File.ReadAllText(Path.Combine(community, "mod-a", "a.txt")) == "a", "Restore overwrite must install the backup.");
+            var recoveries = Directory.GetDirectories(community, RecoverableSwap.RecoveryPrefix + "*");
+            Check(recoveries.Any(r => File.Exists(Path.Combine(r, "original", "a.txt")) &&
+                File.ReadAllText(Path.Combine(r, "original", "a.txt")) == "previous"), "Restore must retain the displaced data.");
+            Check(RecoverableSwap.RecoverInterrupted(community).Count == 0, "Recovery scan should succeed.");
+            Directory.Delete(Path.Combine(community, "mod-a"), true);
+            RecoverableSwap.RecoverInterrupted(community);
+            Check(!Directory.Exists(Path.Combine(community, "mod-a")), "A committed old version must not reappear after uninstall.");
+
+            var swapDest = Path.Combine(community, "rollback-test");
+            var swapStage = Path.Combine(community, ".msfsmm-restore-injected");
+            Directory.CreateDirectory(swapDest);
+            Directory.CreateDirectory(swapStage);
+            File.WriteAllText(Path.Combine(swapDest, "old.txt"), "old");
             rejected = false;
-            try { backupManager.RestoreBackupAsync(full, community, overwrite: true).GetAwaiter().GetResult(); }
+            try { RecoverableSwap.Commit(swapStage, swapDest, true, () => throw new IOException("Injected failure")); }
             catch (IOException) { rejected = true; }
-            Check(rejected && File.ReadAllText(Path.Combine(community, "mod-a", "a.txt")) == "a", "Restore must not overwrite existing mods.");
+            Check(rejected && File.Exists(Path.Combine(swapDest, "old.txt")), "Failed promotion must restore the original.");
             var compressed = Path.Combine(settings.BackupDirectory, "zip-mod_20260101_120000.zip");
             ZipFile.CreateFromDirectory(source, compressed, CompressionLevel.Optimal, includeBaseDirectory: true);
             backupManager.RestoreBackupAsync(compressed, community).GetAwaiter().GetResult();
@@ -227,6 +256,15 @@ internal static class Program
             try { backupManager.RestoreBackupAsync(compressed, community).GetAwaiter().GetResult(); }
             catch (IOException) { rejected = true; }
             Check(rejected, "ZIP restore must not silently overwrite a mod.");
+
+            var interruptedDest = Path.Combine(community, "interrupted-mod");
+            var interrupted = Path.Combine(community, RecoverableSwap.RecoveryPrefix + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Path.Combine(interrupted, "original"));
+            File.WriteAllText(Path.Combine(interrupted, "destination.txt"), "interrupted-mod");
+            File.WriteAllText(Path.Combine(interrupted, "pending"), "");
+            File.WriteAllText(Path.Combine(interrupted, "original", "data.txt"), "safe");
+            Check(RecoverableSwap.RecoverInterrupted(community).Count == 0 &&
+                File.Exists(Path.Combine(interruptedDest, "data.txt")), "Interrupted replacement should recover its original.");
 
             var unrelated = Path.Combine(settings.BackupDirectory, "unrelated");
             Directory.CreateDirectory(unrelated);
@@ -237,7 +275,22 @@ internal static class Program
         finally
         {
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-            if (Directory.Exists(root)) Directory.Delete(root, true);
+            if (Directory.Exists(root))
+            {
+                RemoveTestJunctions(root);
+                Directory.Delete(root, true);
+            }
+        }
+    }
+
+    private static void RemoveTestJunctions(string path)
+    {
+        foreach (var dir in Directory.GetDirectories(path))
+        {
+            if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.ReparsePoint))
+                JunctionHelper.RemoveJunction(dir);
+            else
+                RemoveTestJunctions(dir);
         }
     }
 

@@ -38,7 +38,8 @@ public class ModScanner
 
             var folderName = Path.GetFileName(dir);
             if (folderName.StartsWith(".msfsmm-stage-", StringComparison.OrdinalIgnoreCase) ||
-                folderName.StartsWith(".msfsmm-restore-", StringComparison.OrdinalIgnoreCase))
+                folderName.StartsWith(".msfsmm-restore-", StringComparison.OrdinalIgnoreCase) ||
+                folderName.StartsWith(RecoverableSwap.RecoveryPrefix, StringComparison.OrdinalIgnoreCase))
                 continue;
             progress?.Report($"Scanning {folderName}...");
 

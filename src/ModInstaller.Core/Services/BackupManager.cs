@@ -107,7 +107,9 @@ public class BackupManager
             throw new IOException($"Backup already exists: {backupDir}");
         Directory.CreateDirectory(backupDir);
 
-        var modDirs = Directory.GetDirectories(communityFolder);
+        var modDirs = Directory.GetDirectories(communityFolder)
+            .Where(path => !Path.GetFileName(path).StartsWith(".msfsmm-", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
         int completed = 0;
 
         foreach (var modDir in modDirs)
@@ -168,17 +170,18 @@ public class BackupManager
         {
             var folders = Directory.GetDirectories(backupPath);
             // Check all destinations before changing anything; overwrites are intentionally disabled.
+            if (!overwrite)
+                foreach (var folder in folders)
+                    EnsureDestinationFree(Path.Combine(communityFolder, Path.GetFileName(folder)));
             foreach (var folder in folders)
-                EnsureDestinationFree(Path.Combine(communityFolder, Path.GetFileName(folder)));
-            foreach (var folder in folders)
-                await RestoreOneAsync(folder, Path.Combine(communityFolder, Path.GetFileName(folder)), progress, cancellationToken);
+                await RestoreOneAsync(folder, Path.Combine(communityFolder, Path.GetFileName(folder)), overwrite, progress, cancellationToken);
             return;
         }
 
         name = RemoveTimestamp(name);
         var destPath = Path.Combine(communityFolder, name);
-        EnsureDestinationFree(destPath);
-        await RestoreOneAsync(backupPath, destPath, progress, cancellationToken);
+        if (!overwrite) EnsureDestinationFree(destPath);
+        await RestoreOneAsync(backupPath, destPath, overwrite, progress, cancellationToken);
     }
 
     private async Task RestoreZipAsync(string zipPath, string communityFolder, bool overwrite,
@@ -204,8 +207,8 @@ public class BackupManager
             if (string.IsNullOrWhiteSpace(name) || name is "." or "..")
                 throw new IOException("Invalid backup name.");
             var dest = Path.Combine(communityFolder, name);
-            EnsureDestinationFree(dest);
-            await RestoreOneAsync(source, dest, progress, ct);
+            if (!overwrite) EnsureDestinationFree(dest);
+            await RestoreOneAsync(source, dest, overwrite, progress, ct);
         }
         finally
         {
@@ -231,7 +234,7 @@ public class BackupManager
             throw new IOException($"Destination already exists: {path}. Move or back it up before restoring; nothing was overwritten.");
     }
 
-    private async Task RestoreOneAsync(string source, string dest, IProgress<FileOperationProgress>? progress, CancellationToken ct)
+    private async Task RestoreOneAsync(string source, string dest, bool overwrite, IProgress<FileOperationProgress>? progress, CancellationToken ct)
     {
         var stage = Path.Combine(Path.GetDirectoryName(dest)!, $".msfsmm-restore-{Guid.NewGuid():N}");
         try
@@ -240,7 +243,7 @@ public class BackupManager
             var metadata = Path.Combine(stage, ".backup_meta.json");
             if (File.Exists(metadata)) File.Delete(metadata);
             ct.ThrowIfCancellationRequested();
-            Directory.Move(stage, dest);
+            RecoverableSwap.Commit(stage, dest, overwrite);
         }
         finally
         {

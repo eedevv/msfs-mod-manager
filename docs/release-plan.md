@@ -9,14 +9,16 @@ The beta must remain a prerelease, not replace the latest stable release. Do not
 - [x] Restore full backups to individual folders without overwriting; restrict automatic cleanup to metadata-marked directories.
 - [x] Avoid overwriting existing V3 profiles during V2 import and avoid repeating the import.
 - [ ] Test recovery, unusual reparse points, copy failures, full backup and marker migration on Windows; add a truly transactional replacement/restore with rollback.
-- [ ] Isolate disabled mods and identity by installation with an explicit migration for old data. Existing disabled storage is still shared.
+- [x] Isolate disabled mods and new library content by Community folder; ask before assigning old shared disabled data.
+- [ ] Isolate database, profile and note identity by installation; review migration and alias paths.
 
 ## Phase 2 — Security and correctness
 
 - [x] Use boundary-aware ZIP path containment, stop falling back after a detected traversal, remove the PowerShell extraction fallback, and drain extractor output asynchronously.
 - [x] Fix size sort and custom Community folder selection; propagate the selected path to profile/backup panels.
 - [x] Preserve mod change notifications, truthful batch uninstall/toggle results, window position, and empty analytics.
-- [ ] Review all extractor formats and reparse points, archive limits, package-root/multi-package detection, security scan integration, and simulator detection.
+- [x] Validate ZIP boundaries, links, size and entry limits; support detected multi-package and root-level ZIPs and ZIP backup restoration.
+- [ ] Review 7z/RAR extraction and reparse points, security scan integration, and simulator detection.
 - [x] Apply watch-folder changes when Settings is saved.
 - [ ] Fix operation concurrency, conflict-scan completeness, per-mod scan errors and advertised-but-unwired features.
 
@@ -37,15 +39,15 @@ Numbers match the 37-item audit in the conversation. "Partial" means mitigation 
 | Audit item(s) | Phase | State / follow-up |
 | --- | --- | --- |
 | 1–5: size, custom path, stale panels/scans and settings validation | 2 | Implemented; manual simulator tests pending. |
-| 6: destructive replacement | 1 | Partial: replacement is rejected and new copies are staged; implement transactional replacement and crash recovery. |
+| 6: destructive replacement | 1 | Partial: replacement asks for confirmation, stages content and retains the old entry; interruption and multi-package recovery need broader tests. |
 | 7: external junction targets | 1 | Partial: uninstall preserves all link targets; add ownership tracking and safe cleanup. |
 | 8–10: disabled junction markers, collisions and backups | 1 | Partial: marker targets are respected, collisions rejected, target backed up; test failure and legacy cases, and add ownership-aware cleanup. |
-| 11–13: full/ZIP backups and restore safety | 1 | Partial: full backups restore child mods without overwrite; ZIP restore, transactional overwrite and rollback remain. |
+| 11–13: full/ZIP backups and restore safety | 1 | Partial: ZIP and full restore support staged replacement with old entries retained; full operations can partially complete. |
 | 14: unsafe cleanup | 1 | Partial: unmarked items excluded from automatic cleanup; strengthen backup ownership identification and test. |
 | 15: repeated V2 profile import | 1 | Existing names are preserved and migration is recorded; test migration failures and legacy formats. |
-| 16–17: shared disabled storage and global identities | 1 | Open: design per-installation identity and safe, explicit migration. |
+| 16–17: shared disabled storage and global identities | 1 | Partial: disabled and new library files are scoped with explicit legacy import; database, profiles and notes still need isolation. |
 | 18–21: extraction path validation, scanning, process and command safety | 2 | Partial: ZIP path boundary and cancellation fixed, unsafe PowerShell fallback removed and pipes drained; harden all fallback formats, limits and scanning. |
-| 22–23: archive root naming and multi-package archives | 2 | Open. |
+| 22–23: archive root naming and multi-package archives | 2 | Implemented for detected packages; partial failure and unusual archives need further work. |
 | 24–25: detection and multi-install custom settings | 2 | Open. |
 | 26: concurrent operations | 2 | Open: coordinate file-changing operations and stable installation context. |
 | 27–28: notifications and operation results | 2 | Partial: core status properties and toggle/batch uninstall reporting improved; audit other actions. |
