@@ -103,19 +103,15 @@ public class FileOperations
     /// </summary>
     public static (long SizeBytes, int FileCount) GetDirectoryStats(string path)
     {
-        if (!Directory.Exists(path)) return (0, 0);
-        try
+        if (!Directory.Exists(path)) throw new DirectoryNotFoundException($"Directory not found: {path}");
+        long size = 0;
+        int count = 0;
+        foreach (var file in new DirectoryInfo(path).EnumerateFiles("*", SearchOption.AllDirectories))
         {
-            long size = 0;
-            int count = 0;
-            foreach (var file in new DirectoryInfo(path).EnumerateFiles("*", SearchOption.AllDirectories))
-            {
-                size += file.Length;
-                count++;
-            }
-            return (size, count);
+            size += file.Length;
+            count++;
         }
-        catch { return (0, 0); }
+        return (size, count);
     }
 
     public static long GetDirectorySize(string path) => GetDirectoryStats(path).SizeBytes;
@@ -204,7 +200,7 @@ public class FileOperations
             var parts = entry.FullName.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0 || Path.IsPathRooted(entry.FullName) || parts.Any(IsUnsafeZipComponent))
                 throw new IOException($"Unsafe archive path: {entry.FullName}");
-            var destination = Path.GetFullPath(Path.Combine(destDir, entry.FullName));
+            var destination = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(destDir, entry.FullName)));
             if (!IsPathWithinDirectory(destDir, destination))
                 throw new IOException($"Zip slip detected: {entry.FullName}");
             var directoryEntry = entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\');

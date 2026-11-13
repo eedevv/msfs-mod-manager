@@ -22,6 +22,7 @@ internal static class Program
             TestScopedDisabledStorage();
             TestScopedProfiles();
             TestConflictScan();
+            TestScanFailures();
             TestFileSafety();
             Console.WriteLine("Regression checks passed.");
             return 0;
@@ -214,6 +215,28 @@ internal static class Program
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
+    }
+
+    private static void TestScanFailures()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MSFSScannerTest_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var good = Path.Combine(root, "good");
+            var bad = Path.Combine(root, "bad");
+            Directory.CreateDirectory(good);
+            Directory.CreateDirectory(bad);
+            File.WriteAllText(Path.Combine(good, "manifest.json"), "{}");
+            var lockedPath = Path.Combine(bad, "manifest.json");
+            File.WriteAllText(lockedPath, "{}");
+            using var locked = new FileStream(lockedPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            var mods = new ModScanner().ScanCommunityFolderAsync(root).GetAwaiter().GetResult();
+            Check(mods.Count == 2 && mods.Single(m => m.FolderName == "bad").Health == HealthStatus.Critical &&
+                mods.Single(m => m.FolderName == "bad").HealthIssues.Any(i => i.Contains("Could not scan")) &&
+                mods.Single(m => m.FolderName == "good").HasManifest,
+                "One unreadable mod must be reported without preventing other mods from being scanned.");
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 
     private static void TestFileSafety()

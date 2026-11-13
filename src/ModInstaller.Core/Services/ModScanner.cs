@@ -19,11 +19,15 @@ public class ModScanner
     /// <summary>
     /// Scans a Community folder and returns all detected mods.
     /// </summary>
-    public async Task<List<Mod>> ScanCommunityFolderAsync(
+    public Task<List<Mod>> ScanCommunityFolderAsync(
         string communityFolder,
         SimVersion simVersion = SimVersion.Unknown,
         IProgress<string>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => ScanCommunityFolderCoreAsync(communityFolder, simVersion, progress, cancellationToken), cancellationToken);
+
+    private async Task<List<Mod>> ScanCommunityFolderCoreAsync(
+        string communityFolder, SimVersion simVersion, IProgress<string>? progress, CancellationToken cancellationToken)
     {
         var mods = new List<Mod>();
 
@@ -43,9 +47,23 @@ public class ModScanner
                 continue;
             progress?.Report($"Scanning {folderName}...");
 
-            var mod = await ScanModDirectoryAsync(dir, simVersion);
-            if (mod != null)
-                mods.Add(mod);
+            try
+            {
+                var mod = await ScanModDirectoryAsync(dir, simVersion).ConfigureAwait(false);
+                if (mod != null) mods.Add(mod);
+                else throw new IOException("The mod folder became unavailable during the scan.");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                mods.Add(new Mod
+                {
+                    FolderName = folderName,
+                    FullPath = dir,
+                    SimVersion = simVersion,
+                    Health = HealthStatus.Critical,
+                    HealthIssues = [$"Could not scan this mod: {ex.Message}"]
+                });
+            }
         }
 
         return mods;
@@ -126,8 +144,7 @@ public class ModScanner
         // Fallback: calculate size from filesystem if layout.json didn't provide it
         if (mod.SizeBytes == 0)
         {
-            mod.SizeBytes = FileOperations.GetDirectorySize(modPath);
-            mod.FileCount = FileOperations.GetFileCount(modPath);
+            (mod.SizeBytes, mod.FileCount) = FileOperations.GetDirectoryStats(modPath);
         }
 
         // Fallback: detect type from folder structure if manifest didn't provide it
