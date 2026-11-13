@@ -380,6 +380,18 @@ internal static class Program
                 "Deleting a folder must not follow nested junctions or delete their targets.");
 
             var backupManager = new BackupManager(settings, new FileOperations());
+            var modWithMetadata = Path.Combine(root, "mod-with-metadata");
+            Directory.CreateDirectory(modWithMetadata);
+            File.WriteAllText(Path.Combine(modWithMetadata, ".backup_meta.json"), "user data");
+            rejected = false;
+            try { backupManager.BackupModAsync(new Mod { FolderName = "mod-with-metadata", FullPath = modWithMetadata }).GetAwaiter().GetResult(); }
+            catch (IOException) { rejected = true; }
+            Check(rejected && File.ReadAllText(Path.Combine(modWithMetadata, ".backup_meta.json")) == "user data", "Backup must not replace a mod's own metadata file.");
+            var preservedBackup = Path.Combine(root, "keep-metadata_20260101_120000");
+            Directory.CreateDirectory(preservedBackup);
+            File.WriteAllText(Path.Combine(preservedBackup, ".backup_meta.json"), "user data");
+            backupManager.RestoreBackupAsync(preservedBackup, community).GetAwaiter().GetResult();
+            Check(File.ReadAllText(Path.Combine(community, "keep-metadata", ".backup_meta.json")) == "user data", "Restore must preserve metadata-named user files.");
             var unsafeBackup = Path.Combine(root, "_20260101_120000");
             Directory.CreateDirectory(unsafeBackup);
             File.WriteAllText(Path.Combine(unsafeBackup, "keep.txt"), "old");

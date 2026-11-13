@@ -45,6 +45,8 @@ public class BackupManager
                 sourcePath = target;
         }
 
+        if (File.Exists(Path.Combine(sourcePath, ".backup_meta.json")))
+            throw new IOException("This mod already contains .backup_meta.json; refusing to overwrite its file in the backup. Use a full or ZIP backup instead.");
         await _fileOps.CopyDirectoryAsync(sourcePath, backupPath, progress, cancellationToken);
 
         // Write metadata
@@ -251,8 +253,7 @@ public class BackupManager
         try
         {
             await _fileOps.CopyDirectoryAsync(source, stage, progress, ct);
-            var metadata = Path.Combine(stage, ".backup_meta.json");
-            if (HasManagedBackupMarker(stage)) File.Delete(metadata);
+            // Keep metadata files: an arbitrary backup may contain user data with this name.
             ct.ThrowIfCancellationRequested();
             RecoverableSwap.Commit(stage, dest, overwrite);
         }

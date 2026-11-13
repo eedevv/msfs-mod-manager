@@ -19,6 +19,7 @@ This beta is not ready to publish until the Windows release checklist passes. Te
 - Archives containing multiple detected packages install each package, and root-level ZIPs use a stable package folder name.
 
 ### Known limitations
+- Restore retains `.backup_meta.json` files to avoid deleting user data. A single-folder backup refuses a mod that already contains that filename; use a full or ZIP backup instead.
 - Replaced folders and links are retained in `.msfsmm-recovery-*` folders inside Community and need manual cleanup. Uninstall also preserves link targets; library folders may require manual cleanup.
 - Legacy disabled mods cannot be assigned to the right installation automatically. Review the migration prompt carefully and keep an independent backup; legacy global mod records remain unassigned. Legacy profiles and notes require explicit assignment to a Community folder before use; alias paths to the same physical folder may be treated as different installations.
 - Full restore and multi-package installs can be partially completed if a later mod fails. If a replacement is interrupted and its destination is missing, the original is retained in the recovery folder for manual review rather than automatically restored.
