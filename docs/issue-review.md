@@ -11,7 +11,9 @@ This is a focused source-code review, not a full security audit or a Windows run
 
 Changing the destination does not move existing mods. A previous release stored the Settings field in the 2024 slot regardless of the selected sim; 2020 users should reselect their custom folder while MSFS 2020 is selected.
 
-## Further issues to investigate
+## Findings and current status
+
+The table records the original findings; status and remaining work are tracked in `docs/release-plan.md`. The behaviors described in the finding column are not necessarily still present.
 
 | Priority | Finding | Suggested follow-up |
 | --- | --- | --- |
