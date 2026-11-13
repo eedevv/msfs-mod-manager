@@ -348,6 +348,18 @@ internal static class Program
             var link = Path.Combine(community, "external-mod");
             Directory.CreateDirectory(external);
             File.WriteAllText(Path.Combine(external, "keep.txt"), "external");
+            var specialTarget = Path.Combine(root, "target & caret ^");
+            var specialLink = Path.Combine(root, "link & caret ^");
+            Directory.CreateDirectory(specialTarget);
+            File.WriteAllText(Path.Combine(specialTarget, "keep.txt"), "safe");
+            JunctionHelper.CreateJunction(specialLink, specialTarget);
+            Check(JunctionHelper.IsJunction(specialLink) && File.Exists(Path.Combine(specialLink, "keep.txt")), "Junctions must support quoted ampersand and caret paths.");
+            JunctionHelper.RemoveJunction(specialLink);
+            Check(File.Exists(Path.Combine(specialTarget, "keep.txt")), "Removing a junction must preserve its target.");
+            rejected = false;
+            try { JunctionHelper.CreateJunction(Path.Combine(root, "%PATH%"), specialTarget); }
+            catch (IOException) { rejected = true; }
+            Check(rejected, "Paths with percent expansion must be rejected before invoking cmd.exe.");
             JunctionHelper.CreateJunction(link, external);
             service.UninstallMod(new Mod { FolderName = "external-mod", FullPath = link }, community, createBackup: true);
             Check(!Directory.Exists(link) && File.Exists(Path.Combine(external, "keep.txt")), "Uninstall must preserve external link targets.");

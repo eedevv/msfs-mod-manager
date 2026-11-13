@@ -74,7 +74,8 @@ public static class RecoverableSwap
                 var marker = Path.Combine(folder, "destination.txt");
                 var original = Path.Combine(folder, "original");
                 var pending = Path.Combine(folder, "pending");
-                if (!File.Exists(marker) || !File.Exists(pending) || !Directory.Exists(original)) continue;
+                if (!File.Exists(marker) || !File.Exists(pending) ||
+                    (!Directory.Exists(original) && !JunctionHelper.IsJunction(original))) continue;
                 var name = File.ReadAllText(marker).Trim();
                 if (string.IsNullOrWhiteSpace(name) || name is "." or ".." || Path.GetFileName(name) != name)
                     throw new IOException("Invalid recovery destination name.");
