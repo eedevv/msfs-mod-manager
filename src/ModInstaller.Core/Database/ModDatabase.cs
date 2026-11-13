@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using ModInstaller.Core.Models;
+using ModInstaller.Core.Services;
 
 namespace ModInstaller.Core.Database;
 
@@ -74,6 +75,18 @@ public class ModDatabase : IDisposable
                 sim_version TEXT NOT NULL DEFAULT 'Unknown',
                 enabled_mods TEXT,
                 disabled_mods TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS community_profiles (
+                community_key TEXT NOT NULL,
+                name TEXT NOT NULL COLLATE NOCASE,
+                description TEXT,
+                created_date TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                last_used_date TEXT,
+                sim_version TEXT NOT NULL DEFAULT 'Unknown',
+                enabled_mods TEXT,
+                disabled_mods TEXT,
+                PRIMARY KEY (community_key, name)
             );
 
             CREATE INDEX IF NOT EXISTS idx_mods_folder ON mods(folder_name);
@@ -292,31 +305,81 @@ public class ModDatabase : IDisposable
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
-            var profile = new ModProfile
-            {
-                Name = reader.GetString(reader.GetOrdinal("name")),
-                Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
-                CreatedDate = DateTime.TryParse(reader.GetString(reader.GetOrdinal("created_date")), out var cd) ? cd : DateTime.Now,
-            };
-
-            var lastUsed = reader.IsDBNull(reader.GetOrdinal("last_used_date")) ? null : reader.GetString(reader.GetOrdinal("last_used_date"));
-            if (lastUsed != null && DateTime.TryParse(lastUsed, out var lu)) profile.LastUsedDate = lu;
-
-            if (Enum.TryParse<SimVersion>(reader.GetString(reader.GetOrdinal("sim_version")), out var simVer))
-                profile.SimVersion = simVer;
-
-            var enabled = reader.IsDBNull(reader.GetOrdinal("enabled_mods")) ? null : reader.GetString(reader.GetOrdinal("enabled_mods"));
-            if (!string.IsNullOrEmpty(enabled))
-                profile.EnabledMods = enabled.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
-
-            var disabled = reader.IsDBNull(reader.GetOrdinal("disabled_mods")) ? null : reader.GetString(reader.GetOrdinal("disabled_mods"));
-            if (!string.IsNullOrEmpty(disabled))
-                profile.DisabledMods = disabled.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+            var profile = ReadProfile(reader);
 
             profiles.Add(profile);
         }
 
         return profiles;
+    }
+
+    private static ModProfile ReadProfile(SqliteDataReader reader)
+    {
+        var profile = new ModProfile
+        {
+            Name = reader.GetString(reader.GetOrdinal("name")),
+            Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
+            CreatedDate = DateTime.TryParse(reader.GetString(reader.GetOrdinal("created_date")), out var cd) ? cd : DateTime.Now,
+        };
+        var lastUsed = reader.IsDBNull(reader.GetOrdinal("last_used_date")) ? null : reader.GetString(reader.GetOrdinal("last_used_date"));
+        if (lastUsed != null && DateTime.TryParse(lastUsed, out var lu)) profile.LastUsedDate = lu;
+        if (Enum.TryParse<SimVersion>(reader.GetString(reader.GetOrdinal("sim_version")), out var simVer)) profile.SimVersion = simVer;
+        var enabled = reader.IsDBNull(reader.GetOrdinal("enabled_mods")) ? null : reader.GetString(reader.GetOrdinal("enabled_mods"));
+        if (!string.IsNullOrEmpty(enabled)) profile.EnabledMods = enabled.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+        var disabled = reader.IsDBNull(reader.GetOrdinal("disabled_mods")) ? null : reader.GetString(reader.GetOrdinal("disabled_mods"));
+        if (!string.IsNullOrEmpty(disabled)) profile.DisabledMods = disabled.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+        return profile;
+    }
+
+    /// <summary>Save a profile for one Community folder; legacy profiles are never changed.</summary>
+    public void SaveCommunityProfile(string communityFolder, ModProfile profile, bool replace = true)
+    {
+        var key = DisabledModStorage.GetCommunityKey(communityFolder);
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = replace ? """
+            INSERT INTO community_profiles (community_key, name, description, sim_version, enabled_mods, disabled_mods)
+            VALUES (@key, @name, @desc, @simVer, @enabled, @disabled)
+            ON CONFLICT(community_key, name) DO UPDATE SET
+                description=@desc, sim_version=@simVer, enabled_mods=@enabled,
+                disabled_mods=@disabled, last_used_date=datetime('now', 'localtime')
+            """ : """
+            INSERT INTO community_profiles (community_key, name, description, sim_version, enabled_mods, disabled_mods)
+            VALUES (@key, @name, @desc, @simVer, @enabled, @disabled)
+            """;
+        cmd.Parameters.AddWithValue("@key", key);
+        cmd.Parameters.AddWithValue("@name", profile.Name);
+        cmd.Parameters.AddWithValue("@desc", (object?)profile.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@simVer", profile.SimVersion.ToString());
+        cmd.Parameters.AddWithValue("@enabled", string.Join("|", profile.EnabledMods));
+        cmd.Parameters.AddWithValue("@disabled", string.Join("|", profile.DisabledMods));
+        cmd.ExecuteNonQuery();
+        profile.CommunityKey = key;
+    }
+
+    public List<ModProfile> GetCommunityProfiles(string communityFolder)
+    {
+        var key = DisabledModStorage.GetCommunityKey(communityFolder);
+        var profiles = new List<ModProfile>();
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = "SELECT * FROM community_profiles WHERE community_key = @key ORDER BY name";
+        cmd.Parameters.AddWithValue("@key", key);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            var profile = ReadProfile(reader);
+            profile.CommunityKey = key;
+            profiles.Add(profile);
+        }
+        return profiles;
+    }
+
+    public void DeleteCommunityProfile(string communityFolder, string name)
+    {
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = "DELETE FROM community_profiles WHERE community_key = @key AND name = @name";
+        cmd.Parameters.AddWithValue("@key", DisabledModStorage.GetCommunityKey(communityFolder));
+        cmd.Parameters.AddWithValue("@name", name);
+        cmd.ExecuteNonQuery();
     }
 
     public void DeleteProfile(string name)

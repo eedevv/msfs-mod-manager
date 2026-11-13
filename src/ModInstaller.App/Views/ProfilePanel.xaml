@@ -45,7 +45,7 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" />
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="14" />
                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                         <Border Background="#1A3FB950" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
                                             <TextBlock FontSize="10" Foreground="{DynamicResource SuccessBrush}">
@@ -67,11 +67,11 @@
 
                                 <Button Grid.Column="1" Content="&#x26A1; Load"
                                         Style="{DynamicResource AnimatedPrimaryButton}"
-                                        Tag="{Binding Name}" Click="LoadProfile_Click"
+                                        Tag="{Binding}" Click="LoadProfile_Click"
                                         Padding="12,6" FontSize="11" Margin="0,0,8,0" />
                                 <Button Grid.Column="2" Content="&#x2715;"
                                         Style="{DynamicResource AnimatedSecondaryButton}"
-                                        Tag="{Binding Name}" Click="DeleteProfile_Click"
+                                        Tag="{Binding}" Click="DeleteProfile_Click"
                                         Padding="8,6" FontSize="11" Foreground="{DynamicResource ErrorBrush}" />
                             </Grid>
                         </Border>

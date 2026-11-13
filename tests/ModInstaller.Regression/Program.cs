@@ -20,6 +20,7 @@ internal static class Program
             TestFolderResolutionAndPersistence();
             TestFolderSelection();
             TestScopedDisabledStorage();
+            TestScopedProfiles();
             TestFileSafety();
             Console.WriteLine("Regression checks passed.");
             return 0;
@@ -133,6 +134,40 @@ internal static class Program
                 "Migration collisions must be preserved in legacy storage.");
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    private static void TestScopedProfiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MSFSProfileTest_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var first = Path.Combine(root, "2020");
+            var second = Path.Combine(root, "2024");
+            using (var db = new ModDatabase(Path.Combine(root, "profiles.db")))
+            {
+                db.SaveProfile(new ModProfile { Name = "legacy", EnabledMods = ["old"] });
+                db.SaveCommunityProfile(first, new ModProfile { Name = "shared", EnabledMods = ["first"] });
+                db.SaveCommunityProfile(second, new ModProfile { Name = "shared", EnabledMods = ["second"] });
+                Check(db.GetCommunityProfiles(first.ToUpperInvariant()).Single().EnabledMods.Single() == "first", "First profile must be isolated and path-case independent.");
+                Check(db.GetCommunityProfiles(second).Single().EnabledMods.Single() == "second", "Same-named profile must not overwrite another Community folder.");
+                var legacy = db.GetAllProfiles().Single();
+                Check(legacy.CommunityKey == null && legacy.EnabledMods.Single() == "old", "Existing profiles must remain unassigned.");
+                db.SaveCommunityProfile(first, legacy, replace: false);
+                Check(db.GetAllProfiles().Single().CommunityKey == null, "Assigning a legacy profile must keep the original.");
+                var rejected = false;
+                try { db.SaveCommunityProfile(first, new ModProfile { Name = "SHARED", EnabledMods = ["bad"] }, replace: false); }
+                catch (Microsoft.Data.Sqlite.SqliteException) { rejected = true; }
+                Check(rejected && db.GetCommunityProfiles(first).Single(p => p.Name == "shared").EnabledMods.Single() == "first", "Legacy assignment must not overwrite a same-named scoped profile.");
+                db.DeleteCommunityProfile(first, "shared");
+                Check(db.GetCommunityProfiles(second).Count == 1 && db.GetAllProfiles().Count == 1, "Deleting a scoped profile must not delete another installation or legacy profile.");
+            }
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
     }
 
     private static void TestFileSafety()

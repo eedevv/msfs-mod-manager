@@ -16,13 +16,14 @@ public sealed class DisabledModStorage
         _legacyRoot = legacyRoot ?? AppSettings.DisabledModsDirectory;
     }
 
-    public string GetDirectory(string communityFolder)
+    public static string GetCommunityKey(string communityFolder)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(communityFolder);
         var normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(communityFolder)).ToUpperInvariant();
-        var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
-        return Path.Combine(_scopedRoot, key);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
+
+    public string GetDirectory(string communityFolder) => Path.Combine(_scopedRoot, GetCommunityKey(communityFolder));
 
     public string GetLibraryDirectory(string libraryRoot, string communityFolder) =>
         Path.Combine(libraryRoot, "ByCommunity", Path.GetFileName(GetDirectory(communityFolder)));

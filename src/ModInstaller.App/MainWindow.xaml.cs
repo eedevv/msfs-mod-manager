@@ -394,7 +394,7 @@ public partial class MainWindow : Window
                     ProfilePage.Initialize(ViewModel.Database, ViewModel.Mods, ShowToast);
                     if (ViewModel.Installer != null)
                         ProfilePage.SetInstaller(ViewModel.Installer, ViewModel.CommunityFolderPath,
-                            () => ViewModel.RefreshModListAsync());
+                            () => ViewModel.RefreshModListAsync(), () => ViewModel.IsLoading);
                 }
                 break;
             case "Conflicts":

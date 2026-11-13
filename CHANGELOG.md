@@ -14,11 +14,12 @@ This beta is not ready to publish until the Windows release checklist passes. Te
 - Improved status change notifications, uninstall/toggle reporting, window position restoration, empty analytics and conflict wording.
 - Apply watch-folder settings immediately and avoid listing temporary staging folders as mods.
 - Disabled mods and newly managed library content are separated by Community folder. Legacy disabled mods require explicit assignment; collisions are left untouched.
+- Newly saved profiles are scoped to their Community folder. Existing profiles remain available as unassigned legacy entries and can be copied explicitly without overwriting a scoped profile.
 - Archives containing multiple detected packages install each package, and root-level ZIPs use a stable package folder name.
 
 ### Known limitations
 - Replaced folders and links are retained in `.msfsmm-recovery-*` folders inside Community and need manual cleanup. Uninstall also preserves link targets; library folders may require manual cleanup.
-- Legacy disabled mods cannot be assigned to the right installation automatically. Review the migration prompt carefully and keep an independent backup; global database identity and profile isolation remain unfinished.
+- Legacy disabled mods cannot be assigned to the right installation automatically. Review the migration prompt carefully and keep an independent backup; global mod database identity and note isolation remain unfinished. Profiles must be assigned to a Community folder before use.
 - Full restore and multi-package installs can be partially completed if a later mod fails. If a replacement is interrupted and its destination is missing, the original is retained in the recovery folder for manual review rather than automatically restored.
 - Extraction and junction changes require Windows validation; untrusted archives should be treated with care.
 - The remaining audit and scaling items are tracked in `docs/release-plan.md`.
