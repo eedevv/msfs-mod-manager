@@ -49,12 +49,27 @@ public class ModInstallerService
 
                 await ExtractArchiveAsync(sourcePath, tempDir, progress, cancellationToken);
 
-                // Find the actual mod root inside the extracted content
-                var modRoot = ModScanner.FindModRootInExtractedArchive(tempDir);
-                if (modRoot == null)
+                var modRoots = ModScanner.FindModRootsInExtractedArchive(tempDir);
+                if (modRoots.Count == 0)
                     throw new InvalidOperationException("No valid MSFS mod found in the archive.");
-
-                modSourceDir = modRoot;
+                var names = modRoots.Select(root => string.Equals(root, tempDir, StringComparison.OrdinalIgnoreCase)
+                    ? Path.GetFileNameWithoutExtension(sourcePath) : Path.GetFileName(root)).ToList();
+                if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Count)
+                    throw new IOException("Archive contains duplicate or invalid package names; nothing was installed.");
+                // Check all package destinations before installing any package.
+                foreach (var name in names)
+                {
+                    var destination = Path.Combine(communityFolder, name);
+                    var library = Path.Combine(_settings.ModLibraryDirectory, name);
+                    if (Directory.Exists(destination) || File.Exists(destination) || JunctionHelper.IsJunction(destination) ||
+                        (useJunction && (Directory.Exists(library) || File.Exists(library) || JunctionHelper.IsJunction(library))))
+                        throw new IOException($"Destination already exists for {name}; nothing was installed.");
+                }
+                Mod? lastArchiveMod = null;
+                for (int i = 0; i < modRoots.Count; i++)
+                    lastArchiveMod = await InstallSingleModAsync(modRoots[i], communityFolder, simVersion, useJunction,
+                        progress, cancellationToken, names[i]);
+                return lastArchiveMod;
             }
             else if (Directory.Exists(sourcePath))
             {
@@ -102,9 +117,10 @@ public class ModInstallerService
         SimVersion simVersion,
         bool useJunction,
         IProgress<FileOperationProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? folderName = null)
     {
-        var modFolderName = Path.GetFileName(modSourceDir);
+        var modFolderName = folderName ?? Path.GetFileName(Path.TrimEndingDirectorySeparator(modSourceDir));
         var destPath = Path.Combine(communityFolder, modFolderName);
 
         // Check for existing mod
@@ -279,10 +295,7 @@ public class ModInstallerService
         path.EndsWith(".rar", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Extracts any archive using multiple strategies with fallbacks:
-    /// 1. .NET ZipFile (for .zip)
-    /// 2. Windows built-in tar command (handles most ZIPs, built into Win10+)
-    /// 3. 7-Zip (for .7z, .rar, and as fallback for corrupt ZIPs)
+    /// Extracts ZIPs using the validated .NET extractor and 7z/RAR using installed 7-Zip.
     /// </summary>
     private async Task ExtractArchiveAsync(
         string archivePath, string destDir,
@@ -300,26 +313,16 @@ public class ModInstallerService
                 await _fileOps.ExtractZipAsync(archivePath, destDir, progress, ct);
                 return;
             }
+            // A failed ZIP validation or extraction must not be retried through an
+            // extractor with different path/link handling.
             catch (OperationCanceledException) { throw; }
-            catch (IOException ex) when (ex.Message.StartsWith("Zip slip detected:", StringComparison.Ordinal)) { throw; }
-            catch
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // ZipFile failed (corrupt central directory, etc.) — try fallbacks
-                CleanDirectory(destDir);
+                throw new IOException($"ZIP extraction failed: {ex.Message}", ex);
             }
-
-            // Strategy 2: Windows tar (built into Win10+, handles many ZIP variants)
-            try
-            {
-                await RunProcessAsync("tar", $"-xf \"{archivePath}\" -C \"{destDir}\"", ct);
-                if (Directory.GetFileSystemEntries(destDir).Length > 0) return;
-            }
-            catch (OperationCanceledException) { throw; }
-            catch { CleanDirectory(destDir); }
-
         }
 
-        // Strategy 4: 7-Zip (works for all formats including corrupt ZIPs)
+        // 7-Zip is required for non-ZIP formats.
         var sevenZip = Find7Zip();
         if (sevenZip != null)
         {
@@ -333,7 +336,7 @@ public class ModInstallerService
         }
 
         // All strategies failed
-        var tried = ext == ".zip" ? ".NET ZipFile, tar" : "extraction";
+        var tried = ext == ".zip" ? ".NET ZipFile" : "extraction";
         if (sevenZip != null) tried += ", 7-Zip";
         throw new IOException($"Failed to extract {Path.GetFileName(archivePath)}. Tried: {tried}. The archive may be corrupted." +
             (sevenZip == null ? " Install 7-Zip (7-zip.org) for better archive support." : ""));

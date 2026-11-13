@@ -153,7 +153,24 @@ public class FileOperations
     {
         using var archive = ZipFile.OpenRead(zipPath);
         var totalEntries = archive.Entries.Count;
-        long totalBytes = archive.Entries.Sum(e => e.Length);
+        const int maxEntries = 1_000_000;
+        const long maxUncompressedBytes = 100L * 1024 * 1024 * 1024;
+        if (totalEntries > maxEntries)
+            throw new IOException("Archive contains too many entries.");
+        long totalBytes = 0;
+        // Validate the entire archive before writing any file.
+        foreach (var entry in archive.Entries)
+        {
+            var destination = Path.GetFullPath(Path.Combine(destDir, entry.FullName));
+            if (!IsPathWithinDirectory(destDir, destination))
+                throw new IOException($"Zip slip detected: {entry.FullName}");
+            var unixType = (entry.ExternalAttributes >> 16) & 0xF000;
+            if (unixType == 0xA000 || (entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
+                throw new IOException($"Archive links are not supported: {entry.FullName}");
+            if (entry.Length > maxUncompressedBytes - totalBytes)
+                throw new IOException("Archive exceeds the 100 GiB uncompressed size limit.");
+            totalBytes += entry.Length;
+        }
         long extractedBytes = 0;
         int extractedFiles = 0;
         var lastReport = DateTime.MinValue;

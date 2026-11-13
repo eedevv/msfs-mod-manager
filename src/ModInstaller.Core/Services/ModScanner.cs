@@ -227,49 +227,29 @@ public class ModScanner
     /// - single folder containing the mod
     /// - nested folders (author/mod/content)
     /// </summary>
-    public static string? FindModRootInExtractedArchive(string extractedPath)
-    {
-        // Check if the extracted path itself is a mod
-        if (IsValidModDirectory(extractedPath))
-            return extractedPath;
+    public static string? FindModRootInExtractedArchive(string extractedPath) =>
+        FindModRootsInExtractedArchive(extractedPath).FirstOrDefault();
 
-        // BFS search up to 4 levels deep
+    /// <summary>Find independent package roots, without descending into an already found package.</summary>
+    public static List<string> FindModRootsInExtractedArchive(string extractedPath)
+    {
+        var roots = new List<string>();
+        if (!Directory.Exists(extractedPath)) return roots;
         var queue = new Queue<(string Path, int Depth)>();
         queue.Enqueue((extractedPath, 0));
-
         while (queue.Count > 0)
         {
-            var (currentPath, depth) = queue.Dequeue();
-            if (depth > 4) continue;
-
-            try
+            var (path, depth) = queue.Dequeue();
+            if (IsValidModDirectory(path))
             {
-                foreach (var subDir in Directory.GetDirectories(currentPath))
-                {
-                    if (IsValidModDirectory(subDir))
-                        return subDir;
-                    if (depth < 4)
-                        queue.Enqueue((subDir, depth + 1));
-                }
+                roots.Add(path);
+                continue;
             }
-            catch { /* Skip inaccessible directories */ }
+            if (depth >= 4) continue;
+            foreach (var child in Directory.GetDirectories(path))
+                queue.Enqueue((child, depth + 1));
         }
-
-        // Last resort: if the extracted folder has only one subfolder, use it
-        // (common pattern: ZIP contains a single folder that IS the mod even without manifest)
-        try
-        {
-            var dirs = Directory.GetDirectories(extractedPath);
-            if (dirs.Length == 1)
-            {
-                var singleDir = dirs[0];
-                // If it has any content at all, treat it as the mod
-                if (Directory.GetFiles(singleDir, "*", SearchOption.AllDirectories).Length > 0)
-                    return singleDir;
-            }
-        }
-        catch { }
-
-        return null;
+        return roots;
     }
+
 }

@@ -151,12 +151,18 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (!Directory.Exists(backupPath))
-            throw new DirectoryNotFoundException($"Backup directory not found (ZIP restore is not yet supported): {backupPath}");
         if (!Directory.Exists(communityFolder))
             throw new DirectoryNotFoundException($"Community folder not found: {communityFolder}");
 
-        var name = Path.GetFileName(backupPath);
+        if (File.Exists(backupPath) && Path.GetExtension(backupPath).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            await RestoreZipAsync(backupPath, communityFolder, overwrite, progress, cancellationToken);
+            return;
+        }
+        if (!Directory.Exists(backupPath))
+            throw new DirectoryNotFoundException($"Backup directory not found: {backupPath}");
+
+        var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(backupPath));
         var isFullBackup = name.StartsWith("FullBackup_", StringComparison.OrdinalIgnoreCase);
         if (isFullBackup)
         {
@@ -169,15 +175,54 @@ public class BackupManager
             return;
         }
 
+        name = RemoveTimestamp(name);
+        var destPath = Path.Combine(communityFolder, name);
+        EnsureDestinationFree(destPath);
+        await RestoreOneAsync(backupPath, destPath, progress, cancellationToken);
+    }
+
+    private async Task RestoreZipAsync(string zipPath, string communityFolder, bool overwrite,
+        IProgress<FileOperationProgress>? progress, CancellationToken ct)
+    {
+        // Compressed single-mod backups contain a single base directory; extract into
+        // isolated storage first and use the backup filename as the package identity.
+        var temp = Path.Combine(Path.GetTempPath(), $"MSFSBackupRestore_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temp);
+        try
+        {
+            await _fileOps.ExtractZipAsync(zipPath, temp, progress, ct);
+            var dirs = Directory.GetDirectories(temp);
+            var files = Directory.GetFiles(temp);
+            string source;
+            if (dirs.Length == 1 && files.Length == 0)
+                source = dirs[0];
+            else if (ModScanner.IsValidModDirectory(temp))
+                source = temp;
+            else
+                throw new IOException("ZIP backup must contain exactly one mod folder or a mod at the archive root.");
+            var name = RemoveTimestamp(Path.GetFileNameWithoutExtension(zipPath));
+            if (string.IsNullOrWhiteSpace(name) || name is "." or "..")
+                throw new IOException("Invalid backup name.");
+            var dest = Path.Combine(communityFolder, name);
+            EnsureDestinationFree(dest);
+            await RestoreOneAsync(source, dest, progress, ct);
+        }
+        finally
+        {
+            if (Directory.Exists(temp))
+                try { FileOperations.SafeDeleteDirectory(temp); } catch { }
+        }
+    }
+
+    private static string RemoveTimestamp(string name)
+    {
         if (name.Length > 16)
         {
             var suffix = name[^16..];
             if (suffix[0] == '_' && suffix[9] == '_' && suffix[1..9].All(char.IsDigit) && suffix[10..].All(char.IsDigit))
-                name = name[..^16];
+                return name[..^16];
         }
-        var destPath = Path.Combine(communityFolder, name);
-        EnsureDestinationFree(destPath);
-        await RestoreOneAsync(backupPath, destPath, progress, cancellationToken);
+        return name;
     }
 
     private static void EnsureDestinationFree(string path)

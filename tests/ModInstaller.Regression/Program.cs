@@ -143,6 +143,22 @@ internal static class Program
             catch (IOException) { rejected = true; }
             Check(rejected && File.ReadAllText(Path.Combine(existing, "keep.txt")) == "original", "Existing destination must not be overwritten.");
 
+            var rootZip = Path.Combine(root, "root-pack.zip");
+            ZipFile.CreateFromDirectory(source, rootZip);
+            service.InstallModAsync(rootZip, community, SimVersion.MSFS2024, false).GetAwaiter().GetResult();
+            Check(File.Exists(Path.Combine(community, "root-pack", "manifest.json")), "Root-level archive should use a stable filename.");
+
+            var multiRoot = Path.Combine(root, "multi");
+            Directory.CreateDirectory(Path.Combine(multiRoot, "first-mod"));
+            Directory.CreateDirectory(Path.Combine(multiRoot, "second-mod"));
+            File.WriteAllText(Path.Combine(multiRoot, "first-mod", "manifest.json"), "{}");
+            File.WriteAllText(Path.Combine(multiRoot, "second-mod", "manifest.json"), "{}");
+            var multiZip = Path.Combine(root, "multi.zip");
+            ZipFile.CreateFromDirectory(multiRoot, multiZip);
+            service.InstallModAsync(multiZip, community, SimVersion.MSFS2024, false).GetAwaiter().GetResult();
+            Check(File.Exists(Path.Combine(community, "first-mod", "manifest.json")) &&
+                  File.Exists(Path.Combine(community, "second-mod", "manifest.json")), "Multiple archive packages should all be installed.");
+
             var external = Path.Combine(root, "external");
             var link = Path.Combine(community, "external-mod");
             Directory.CreateDirectory(external);
@@ -163,6 +179,15 @@ internal static class Program
             try { backupManager.RestoreBackupAsync(full, community, overwrite: true).GetAwaiter().GetResult(); }
             catch (IOException) { rejected = true; }
             Check(rejected && File.ReadAllText(Path.Combine(community, "mod-a", "a.txt")) == "a", "Restore must not overwrite existing mods.");
+            var compressed = Path.Combine(settings.BackupDirectory, "zip-mod_20260101_120000.zip");
+            ZipFile.CreateFromDirectory(source, compressed, CompressionLevel.Optimal, includeBaseDirectory: true);
+            backupManager.RestoreBackupAsync(compressed, community).GetAwaiter().GetResult();
+            Check(File.Exists(Path.Combine(community, "zip-mod", "manifest.json")), "ZIP backup must restore under the mod name.");
+            rejected = false;
+            try { backupManager.RestoreBackupAsync(compressed, community).GetAwaiter().GetResult(); }
+            catch (IOException) { rejected = true; }
+            Check(rejected, "ZIP restore must not silently overwrite a mod.");
+
             var unrelated = Path.Combine(settings.BackupDirectory, "unrelated");
             Directory.CreateDirectory(unrelated);
             Directory.SetCreationTime(unrelated, DateTime.Now.AddDays(-50));
