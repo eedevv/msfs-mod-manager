@@ -15,6 +15,8 @@ public partial class MainWindow : Window
     private MainViewModel ViewModel => (MainViewModel)DataContext;
     private readonly HashSet<string> _initializedPages = ["Mods"];
     private readonly Action _localizationHandler;
+    private bool _legacyMigrationPrompted;
+    private bool _initializationComplete;
 
     public MainWindow()
     {
@@ -55,6 +57,8 @@ public partial class MainWindow : Window
 
         await ViewModel.InitializeAsync();
         RestoreWindowPosition();
+        _initializationComplete = true;
+        await PromptLegacyMigrationAsync();
 
         startupTimer.Stop();
 
@@ -231,12 +235,46 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task PromptLegacyMigrationAsync()
+    {
+        if (_legacyMigrationPrompted || string.IsNullOrWhiteSpace(ViewModel.CommunityFolderPath) ||
+            !System.IO.Directory.Exists(ViewModel.CommunityFolderPath)) return;
+        try
+        {
+            var storage = new DisabledModStorage();
+            var legacy = storage.GetLegacyDirectories();
+            if (legacy.Count == 0) return;
+            _legacyMigrationPrompted = true;
+            var preview = string.Join("\n", legacy.Take(8).Select(System.IO.Path.GetFileName));
+            if (legacy.Count > 8) preview += $"\n...and {legacy.Count - 8} more";
+            var answer = MessageBox.Show(
+                $"Found {legacy.Count} disabled mod(s) from the previous shared storage:\n{preview}\n\n" +
+                $"Assign them to the currently selected Community folder?\n{ViewModel.CommunityFolderPath}\n\n" +
+                "Their original simulator cannot be determined automatically. Choose No if they belong elsewhere; files will be left untouched and can be imported after restarting with the correct folder selected.",
+                "Import legacy disabled mods", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (answer != MessageBoxResult.Yes) return;
+            var result = storage.MigrateLegacy(ViewModel.CommunityFolderPath);
+            await ViewModel.RefreshModListAsync();
+            var detail = result.Errors.Count == 0 ? $"Imported {result.Moved} disabled mod(s)." :
+                $"Imported {result.Moved}; {result.Errors.Count} could not be moved and remain in the old folder:\n" + string.Join("\n", result.Errors.Take(8));
+            MessageBox.Show(detail, "Legacy import", MessageBoxButton.OK,
+                result.Errors.Count == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Legacy import could not be completed. Check both old and selected storage; no remaining files were overwritten.\n{ex.Message}",
+                "Legacy import", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(MainViewModel.CommunityFolderPath)) return;
         // These pages are initialized lazily and otherwise retain the old path.
         BackupPage.SetCommunityFolder(ViewModel.CommunityFolderPath);
         ProfilePage.SetCommunityFolder(ViewModel.CommunityFolderPath);
+        if (_initializationComplete && !_legacyMigrationPrompted)
+            Dispatcher.BeginInvoke(new Action(async () => await PromptLegacyMigrationAsync()));
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)

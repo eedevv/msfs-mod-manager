@@ -60,7 +60,7 @@ public class ModInstallerService
                 foreach (var name in names)
                 {
                     var destination = Path.Combine(communityFolder, name);
-                    var library = Path.Combine(_settings.ModLibraryDirectory, name);
+                    var library = Path.Combine(new DisabledModStorage().GetLibraryDirectory(_settings.ModLibraryDirectory, communityFolder), name);
                     if (Directory.Exists(destination) || File.Exists(destination) || JunctionHelper.IsJunction(destination) ||
                         (useJunction && (Directory.Exists(library) || File.Exists(library) || JunctionHelper.IsJunction(library))))
                         throw new IOException($"Destination already exists for {name}; nothing was installed.");
@@ -129,7 +129,9 @@ public class ModInstallerService
             throw new IOException($"A mod already exists at {destPath}. Remove or back it up before installing a replacement; no files were changed.");
         }
 
-        var baseDir = useJunction ? _settings.ModLibraryDirectory : communityFolder;
+        var baseDir = useJunction
+            ? new DisabledModStorage().GetLibraryDirectory(_settings.ModLibraryDirectory, communityFolder)
+            : communityFolder;
         Directory.CreateDirectory(baseDir);
         var finalContentPath = useJunction ? Path.Combine(baseDir, modFolderName) : destPath;
         if (Directory.Exists(finalContentPath) || JunctionHelper.IsJunction(finalContentPath))
@@ -213,7 +215,7 @@ public class ModInstallerService
 
     public async Task EnableModAsync(Mod mod, string communityFolder, IProgress<FileOperationProgress>? progress = null)
     {
-        var disabledPath = Path.Combine(AppSettings.DisabledModsDirectory, mod.FolderName);
+        var disabledPath = Path.Combine(new DisabledModStorage().GetDirectory(communityFolder), mod.FolderName);
         var communityPath = Path.Combine(communityFolder, mod.FolderName);
         if (!Directory.Exists(communityFolder)) throw new DirectoryNotFoundException("Community folder not found.");
         if (!Directory.Exists(disabledPath)) throw new DirectoryNotFoundException($"Disabled mod not found: {disabledPath}");
@@ -231,10 +233,11 @@ public class ModInstallerService
         }
         else if (_settings.UseJunctions)
         {
-            var libraryPath = Path.Combine(_settings.ModLibraryDirectory, mod.FolderName);
+            var libraryDirectory = new DisabledModStorage().GetLibraryDirectory(_settings.ModLibraryDirectory, communityFolder);
+            var libraryPath = Path.Combine(libraryDirectory, mod.FolderName);
             if (Directory.Exists(libraryPath) || JunctionHelper.IsJunction(libraryPath))
                 throw new IOException($"Library destination already exists: {libraryPath}. No files were removed.");
-            Directory.CreateDirectory(_settings.ModLibraryDirectory);
+            Directory.CreateDirectory(libraryDirectory);
             await _fileOps.MoveDirectoryAsync(disabledPath, libraryPath, progress);
             try { JunctionHelper.CreateJunction(communityPath, libraryPath); }
             catch
@@ -256,8 +259,11 @@ public class ModInstallerService
     /// <summary>Disable without overwriting any existing disabled mod.</summary>
     public async Task DisableModAsync(Mod mod, IProgress<FileOperationProgress>? progress = null)
     {
-        Directory.CreateDirectory(AppSettings.DisabledModsDirectory);
-        var disabledPath = Path.Combine(AppSettings.DisabledModsDirectory, mod.FolderName);
+        var communityFolder = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(mod.FullPath))
+            ?? throw new IOException("Cannot identify the mod's Community folder.");
+        var disabledDirectory = new DisabledModStorage().GetDirectory(communityFolder);
+        Directory.CreateDirectory(disabledDirectory);
+        var disabledPath = Path.Combine(disabledDirectory, mod.FolderName);
         if (Directory.Exists(disabledPath) || File.Exists(disabledPath))
             throw new IOException($"Disabled destination already exists: {disabledPath}. No files were removed.");
 

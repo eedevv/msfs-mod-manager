@@ -19,6 +19,7 @@ internal static class Program
             TestSizeSort();
             TestFolderResolutionAndPersistence();
             TestFolderSelection();
+            TestScopedDisabledStorage();
             TestFileSafety();
             Console.WriteLine("Regression checks passed.");
             return 0;
@@ -106,6 +107,34 @@ internal static class Program
         noDetection.ApplyCommunityFolderAsync().GetAwaiter().GetResult();
         Check(noDetection.CommunityFolderPath == custom2024, "Custom folder should work without simulator detection.");
     }
+    private static void TestScopedDisabledStorage()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MSFSStorageTest_" + Guid.NewGuid().ToString("N"));
+        var legacy = Path.Combine(root, "legacy");
+        var first = Path.Combine(root, "community2020");
+        var second = Path.Combine(root, "community2024");
+        var storage = new DisabledModStorage(Path.Combine(root, "scoped"), legacy);
+        try
+        {
+            Directory.CreateDirectory(first);
+            Directory.CreateDirectory(second);
+            Directory.CreateDirectory(Path.Combine(legacy, "legacy-mod"));
+            File.WriteAllText(Path.Combine(legacy, "legacy-mod", "keep.txt"), "keep");
+            Check(storage.GetDirectory(first) != storage.GetDirectory(second), "Installations must have separate disabled folders.");
+            Check(storage.GetDirectory(first) == storage.GetDirectory(first.ToUpperInvariant()), "Windows paths should be case-insensitive.");
+            var result = storage.MigrateLegacy(first);
+            Check(result.Moved == 1 && result.Errors.Count == 0, "Legacy mod should be assigned to the chosen installation.");
+            Check(File.Exists(Path.Combine(storage.GetDirectory(first), "legacy-mod", "keep.txt")), "Legacy data should survive migration.");
+            Check(!Directory.Exists(Path.Combine(storage.GetDirectory(second), "legacy-mod")), "Legacy mod must not appear in the other installation.");
+            Directory.CreateDirectory(Path.Combine(legacy, "legacy-mod"));
+            File.WriteAllText(Path.Combine(legacy, "legacy-mod", "new.txt"), "do not overwrite");
+            result = storage.MigrateLegacy(first);
+            Check(result.Moved == 0 && result.Errors.Count == 1 && File.Exists(Path.Combine(legacy, "legacy-mod", "new.txt")),
+                "Migration collisions must be preserved in legacy storage.");
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
     private static void TestFileSafety()
     {
         var root = Path.Combine(Path.GetTempPath(), "MSFSRegression_" + Guid.NewGuid().ToString("N"));
@@ -158,6 +187,17 @@ internal static class Program
             service.InstallModAsync(multiZip, community, SimVersion.MSFS2024, false).GetAwaiter().GetResult();
             Check(File.Exists(Path.Combine(community, "first-mod", "manifest.json")) &&
                   File.Exists(Path.Combine(community, "second-mod", "manifest.json")), "Multiple archive packages should all be installed.");
+
+            var secondCommunity = Path.Combine(root, "community-b");
+            Directory.CreateDirectory(secondCommunity);
+            // A same-named package may be managed independently for two installations.
+            service.InstallModAsync(source, secondCommunity, SimVersion.MSFS2020, true).GetAwaiter().GetResult();
+            var thirdCommunity = Path.Combine(root, "community-c");
+            Directory.CreateDirectory(thirdCommunity);
+            service.InstallModAsync(source, thirdCommunity, SimVersion.MSFS2024, true).GetAwaiter().GetResult();
+            var targetB = JunctionHelper.GetJunctionTarget(Path.Combine(secondCommunity, "test-mod"));
+            var targetC = JunctionHelper.GetJunctionTarget(Path.Combine(thirdCommunity, "test-mod"));
+            Check(targetB != null && targetC != null && targetB != targetC, "Each Community folder must use its own library target.");
 
             var external = Path.Combine(root, "external");
             var link = Path.Combine(community, "external-mod");

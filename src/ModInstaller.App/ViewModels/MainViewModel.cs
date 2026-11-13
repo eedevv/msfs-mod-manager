@@ -197,9 +197,10 @@ public partial class MainViewModel : ObservableObject
             var mods = await _scanner.ScanCommunityFolderAsync(communityFolder, simVersion, progress);
 
             // Also scan disabled mods
-            if (Directory.Exists(AppSettings.DisabledModsDirectory))
+            var disabledDirectory = new DisabledModStorage().GetDirectory(communityFolder);
+            if (Directory.Exists(disabledDirectory))
             {
-                var disabledMods = await _scanner.ScanCommunityFolderAsync(AppSettings.DisabledModsDirectory, simVersion);
+                var disabledMods = await _scanner.ScanCommunityFolderAsync(disabledDirectory, simVersion);
                 foreach (var markerMod in disabledMods)
                 {
                     var mod = markerMod;
