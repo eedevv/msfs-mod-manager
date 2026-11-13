@@ -411,21 +411,18 @@ public partial class MainViewModel : ObservableObject
 
     public void SetModNote(Mod mod, string? note)
     {
+        if (string.IsNullOrWhiteSpace(CommunityFolderPath))
+            throw new InvalidOperationException("No Community folder is selected.");
         mod.Note = note;
-        if (string.IsNullOrWhiteSpace(note))
-            _settings.ModNotes.Remove(mod.FolderName);
-        else
-            _settings.ModNotes[mod.FolderName] = note;
+        _settings.SetCommunityModNote(CommunityFolderPath, mod.FolderName, note);
         SaveSettingsSync();
     }
 
     public void LoadModNotes()
     {
+        if (string.IsNullOrWhiteSpace(CommunityFolderPath)) return;
         foreach (var mod in Mods)
-        {
-            if (_settings.ModNotes.TryGetValue(mod.FolderName, out var note))
-                mod.Note = note;
-        }
+            mod.Note = _settings.GetCommunityModNote(CommunityFolderPath, mod.FolderName);
     }
 
     private static string FormatSize(long bytes) => bytes switch

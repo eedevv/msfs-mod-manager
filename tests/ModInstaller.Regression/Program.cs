@@ -69,6 +69,15 @@ internal static class Program
         Check(restored.ResolveCommunityFolder(SimVersion.MSFS2020, @"C:\Detected2020") == @"D:\Custom2020", "2020 custom path lost.");
         Check(restored.ResolveCommunityFolder(SimVersion.MSFS2024, @"C:\Detected2024") == @"E:\Custom2024", "2024 custom path lost.");
         Check(restored.ResolveCommunityFolder(SimVersion.MSFS2024, null) == @"E:\Custom2024", "Custom path must work without detection.");
+        restored.ModNotes["Same"] = "legacy";
+        restored.SetCommunityModNote(@"D:\Custom2020", "same", "first");
+        restored.SetCommunityModNote(@"E:\Custom2024", "SAME", "second");
+        var imported = restored.CopyLegacyNotes(@"D:\Custom2020");
+        Check(imported.Skipped == 1 && restored.GetCommunityModNote(@"d:\custom2020", "same") == "first" &&
+            restored.GetCommunityModNote(@"E:\Custom2024", "same") == "second" && restored.ModNotes["Same"] == "legacy",
+            "Notes must be scoped, and legacy imports must not overwrite or delete notes.");
+        restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(restored))!;
+        Check(restored.GetCommunityModNote(@"d:\custom2020", "SAME") == "first", "Scoped notes must survive serialization.");
         restored.UseCustomFolder = false;
         Check(restored.ResolveCommunityFolder(SimVersion.MSFS2020, @"C:\Detected2020") == @"C:\Detected2020", "Disabling custom path must use detected path.");
         restored.UseCustomFolder = true;

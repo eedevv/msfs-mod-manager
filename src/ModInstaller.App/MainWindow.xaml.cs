@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly Action _localizationHandler;
     private bool _legacyMigrationPrompted;
     private bool _initializationComplete;
+    private readonly HashSet<string> _legacyNotesPrompted = [];
 
     public MainWindow()
     {
@@ -59,6 +60,7 @@ public partial class MainWindow : Window
         RestoreWindowPosition();
         _initializationComplete = true;
         await PromptLegacyMigrationAsync();
+        await PromptLegacyNotesAsync();
 
         startupTimer.Stop();
 
@@ -267,14 +269,44 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task PromptLegacyNotesAsync()
+    {
+        var community = ViewModel.CommunityFolderPath;
+        var settings = ViewModel.Settings;
+        if (string.IsNullOrWhiteSpace(community) || !System.IO.Directory.Exists(community) || settings.ModNotes.Count == 0) return;
+        var key = DisabledModStorage.GetCommunityKey(community);
+        if (settings.LegacyNotesAssignedCommunities.Contains(key) || !_legacyNotesPrompted.Add(key)) return;
+        if (MessageBox.Show($"Previous notes were saved by mod name without an installation. Copy them to:\n{community}\n\n" +
+            "Existing notes in this installation will not be overwritten, and the old notes will be retained. " +
+            "Choose No if they belong elsewhere; you can be asked again on a later launch.",
+            "Assign legacy mod notes", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        var result = settings.CopyLegacyNotes(community);
+        try
+        {
+            await ViewModel.SaveSettingsAsync();
+            if (ViewModel.CommunityFolderPath == community) ViewModel.LoadModNotes();
+            MessageBox.Show($"Copied {result.Copied} notes; {result.Skipped} existing notes were left unchanged.",
+                "Legacy notes", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            settings.LegacyNotesAssignedCommunities.Remove(key);
+            MessageBox.Show($"Could not save notes: {ex.Message}", "Legacy notes", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(MainViewModel.CommunityFolderPath)) return;
         // These pages are initialized lazily and otherwise retain the old path.
         BackupPage.SetCommunityFolder(ViewModel.CommunityFolderPath);
         ProfilePage.SetCommunityFolder(ViewModel.CommunityFolderPath);
-        if (_initializationComplete && !_legacyMigrationPrompted)
-            Dispatcher.BeginInvoke(new Action(async () => await PromptLegacyMigrationAsync()));
+        if (_initializationComplete)
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                if (!_legacyMigrationPrompted) await PromptLegacyMigrationAsync();
+                await PromptLegacyNotesAsync();
+            }));
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)

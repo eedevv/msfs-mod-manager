@@ -1,3 +1,5 @@
+using ModInstaller.Core.Services;
+
 namespace ModInstaller.Core.Models;
 
 public class AppSettings
@@ -67,8 +69,42 @@ public class AppSettings
     public bool HasMigratedV2Profiles { get; set; }
     public int LaunchCount { get; set; }
 
-    // Mod notes (folder name → note text)
+    // Old notes lack installation identity. Keep them for explicit, non-destructive import.
     public Dictionary<string, string> ModNotes { get; set; } = new();
+    public Dictionary<string, Dictionary<string, string>> CommunityModNotes { get; set; } = new();
+    public List<string> LegacyNotesAssignedCommunities { get; set; } = [];
+
+    public string? GetCommunityModNote(string communityFolder, string folderName)
+    {
+        var key = DisabledModStorage.GetCommunityKey(communityFolder);
+        return CommunityModNotes.TryGetValue(key, out var notes) && notes.TryGetValue(folderName.ToUpperInvariant(), out var note)
+            ? note : null;
+    }
+
+    public void SetCommunityModNote(string communityFolder, string folderName, string? note)
+    {
+        var key = DisabledModStorage.GetCommunityKey(communityFolder);
+        if (!CommunityModNotes.TryGetValue(key, out var notes))
+            CommunityModNotes[key] = notes = new Dictionary<string, string>();
+        var name = folderName.ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(note)) notes.Remove(name);
+        else notes[name] = note;
+    }
+
+    public (int Copied, int Skipped) CopyLegacyNotes(string communityFolder)
+    {
+        var key = DisabledModStorage.GetCommunityKey(communityFolder);
+        if (!CommunityModNotes.TryGetValue(key, out var notes))
+            CommunityModNotes[key] = notes = new Dictionary<string, string>();
+        int copied = 0, skipped = 0;
+        foreach (var (name, note) in ModNotes)
+        {
+            if (notes.TryAdd(name.ToUpperInvariant(), note)) copied++;
+            else skipped++;
+        }
+        if (!LegacyNotesAssignedCommunities.Contains(key)) LegacyNotesAssignedCommunities.Add(key);
+        return (copied, skipped);
+    }
 
     // Warnings
     public long CommunitySizeWarningThresholdBytes { get; set; } = 50L * 1024 * 1024 * 1024; // 50 GB
