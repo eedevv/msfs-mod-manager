@@ -65,6 +65,7 @@ public static class RecoverableSwap
     {
         var errors = new List<string>();
         if (!Directory.Exists(communityFolder)) return errors;
+        using var operation = MutationGate.Enter();
         foreach (var folder in Directory.GetDirectories(communityFolder, RecoveryPrefix + "*"))
         {
             try

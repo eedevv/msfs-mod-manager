@@ -286,6 +286,14 @@ internal static class Program
             var settings = new AppSettings { ModLibraryDirectory = library, BackupDirectory = Path.Combine(root, "backups") };
             using var db = new ModDatabase(Path.Combine(root, "test.db"));
             var service = new ModInstallerService(db, new ModScanner(), new FileOperations(), settings);
+            using (MutationGate.Enter())
+            {
+                var blocked = false;
+                try { service.InstallModAsync(source, community, SimVersion.MSFS2024, false).GetAwaiter().GetResult(); }
+                catch (IOException ex) { blocked = ex.Message.Contains("already in progress"); }
+                Check(blocked && !Directory.Exists(Path.Combine(community, "test-mod")), "Concurrent mutations must be refused before changing files.");
+            }
+            Check(!MutationGate.IsBusy, "Mutation gate must be released after disposal.");
             var existing = Path.Combine(community, "test-mod");
             Directory.CreateDirectory(existing);
             File.WriteAllText(Path.Combine(existing, "keep.txt"), "original");

@@ -52,7 +52,7 @@ Numbers match the 37-item audit in the conversation. "Partial" means mitigation 
 | 18–21: extraction path validation, scanning, process and command safety | 2 | Partial: ZIP path boundary and cancellation fixed, unsafe PowerShell fallback removed and pipes drained; harden all fallback formats, limits and scanning. |
 | 22–23: archive root naming and multi-package archives | 2 | Implemented for detected packages; partial failure and unusual archives need further work. |
 | 24–25: detection and multi-install custom settings | 2 | Open. |
-| 26: concurrent operations | 2 | Open: coordinate file-changing operations and stable installation context. |
+| 26: concurrent operations | 2 | Partial: core file mutations are gated in-process and profile loads stop on folder changes; scan overlap, settings changes, external processes and cross-operation batches need further work. |
 | 27–28: notifications and operation results | 2 | Partial: core status properties and toggle/batch uninstall reporting improved; audit other actions. |
 | 29–31: conflict and scan reliability | 2 | Partial: conflicts use enabled mods, report incomplete scans, avoid SQLite worker writes, and invalidate stale results; unreadable individual mods are reported during Community scans. |
 | 32–33: incomplete advertised features and settings | 2 | Open: implement or remove misleading claims and controls. |

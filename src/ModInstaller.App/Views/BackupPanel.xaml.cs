@@ -13,6 +13,7 @@ public partial class BackupPanel : UserControl
     private AppSettings? _settings;
     private string? _communityFolder;
     private Action<string, string, ToastNotification.ToastType>? _showToast;
+    private Func<Task>? _refreshMods;
 
     public BackupPanel()
     {
@@ -20,12 +21,13 @@ public partial class BackupPanel : UserControl
     }
 
     public void Initialize(AppSettings settings, string communityFolder,
-        Action<string, string, ToastNotification.ToastType> showToast)
+        Action<string, string, ToastNotification.ToastType> showToast, Func<Task> refreshMods)
     {
         _backupManager = new BackupManager(settings, new FileOperations());
         _settings = settings;
         _communityFolder = communityFolder;
         _showToast = showToast;
+        _refreshMods = refreshMods;
         RefreshList();
     }
 
@@ -75,9 +77,13 @@ public partial class BackupPanel : UserControl
             MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (result == MessageBoxResult.Yes)
         {
-            int deleted = _backupManager.CleanOldBackups(30);
-            RefreshList();
-            _showToast?.Invoke("Cleaned", $"Removed {deleted} old backup(s)", ToastNotification.ToastType.Info);
+            try
+            {
+                int deleted = _backupManager.CleanOldBackups(30);
+                RefreshList();
+                _showToast?.Invoke("Cleaned", $"Removed {deleted} old backup(s)", ToastNotification.ToastType.Info);
+            }
+            catch (Exception ex) { _showToast?.Invoke("Cleanup Failed", ex.Message, ToastNotification.ToastType.Error); }
         }
     }
 
@@ -91,18 +97,23 @@ public partial class BackupPanel : UserControl
         var path = (sender as Button)?.Tag as string;
         if (path == null) return;
 
+        var community = _communityFolder;
         var confirmation = MessageBox.Show(
-            $"Restore this backup to:\n{_communityFolder}\n\nChoose Yes to replace existing mods (original folders are retained in .msfsmm-recovery folders). Choose No to restore only if no destination exists.",
+            $"Restore this backup to:\n{community}\n\nChoose Yes to replace existing mods (original folders are retained in .msfsmm-recovery folders). Choose No to restore only if no destination exists.",
             "Confirm Restore", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
         if (confirmation == MessageBoxResult.Cancel) return;
         try
         {
-            await _backupManager.RestoreBackupAsync(path, _communityFolder, overwrite: confirmation == MessageBoxResult.Yes);
+            await _backupManager.RestoreBackupAsync(path, community, overwrite: confirmation == MessageBoxResult.Yes);
             _showToast?.Invoke("Restored", System.IO.Path.GetFileName(path), ToastNotification.ToastType.Success);
         }
         catch (Exception ex)
         {
-            _showToast?.Invoke("Restore Failed", ex.Message, ToastNotification.ToastType.Error);
+            _showToast?.Invoke("Restore Failed", ex.Message + " Some items may already have been restored.", ToastNotification.ToastType.Error);
+        }
+        finally
+        {
+            if (_refreshMods != null) await _refreshMods();
         }
     }
 
@@ -115,6 +126,7 @@ public partial class BackupPanel : UserControl
             MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try
         {
+            using var operation = MutationGate.Enter();
             if (System.IO.Directory.Exists(path))
                 FileOperations.SafeDeleteDirectory(path);
             else if (System.IO.File.Exists(path))
@@ -122,6 +134,6 @@ public partial class BackupPanel : UserControl
             RefreshList();
             _showToast?.Invoke("Deleted", "", ToastNotification.ToastType.Info);
         }
-        catch { }
+        catch (Exception ex) { _showToast?.Invoke("Delete Failed", ex.Message, ToastNotification.ToastType.Error); }
     }
 }

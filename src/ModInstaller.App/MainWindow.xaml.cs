@@ -418,7 +418,7 @@ public partial class MainWindow : Window
         switch (page)
         {
             case "Backups":
-                BackupPage.Initialize(ViewModel.Settings, ViewModel.CommunityFolderPath, ShowToast);
+                BackupPage.Initialize(ViewModel.Settings, ViewModel.CommunityFolderPath, ShowToast, () => ViewModel.RefreshModListAsync());
                 break;
             case "Profiles":
                 if (ViewModel.Database != null)

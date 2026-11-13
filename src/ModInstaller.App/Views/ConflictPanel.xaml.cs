@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using ModInstaller.Core.Database;
 using ModInstaller.Core.Models;
 using ModInstaller.Core.Services;
+using ModInstaller.Core.Utils;
 
 namespace ModInstaller.App.Views;
 
@@ -76,7 +77,7 @@ public partial class ConflictPanel : UserControl
     private async void ScanConflicts_Click(object sender, RoutedEventArgs e)
     {
         if (_engine == null || _mods == null || _scanCancellation != null) return;
-        if (_isBusy?.Invoke() == true)
+        if (_isBusy?.Invoke() == true || MutationGate.IsBusy)
         {
             ScanStatus.Text = "Wait for the current operation to finish.";
             return;

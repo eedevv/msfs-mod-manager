@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using ModInstaller.Core.Models;
+using ModInstaller.Core.Utils;
 
 namespace ModInstaller.Core.Services;
 
@@ -37,6 +38,7 @@ public sealed class DisabledModStorage
     /// </summary>
     public (int Moved, List<string> Errors) MigrateLegacy(string communityFolder)
     {
+        using var operation = MutationGate.Enter();
         if (!Directory.Exists(communityFolder))
             throw new DirectoryNotFoundException("The selected Community folder is unavailable.");
         var destinationRoot = GetDirectory(communityFolder);

@@ -26,13 +26,16 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using var operation = MutationGate.Enter();
         Directory.CreateDirectory(_settings.BackupDirectory);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         var backupName = $"{mod.FolderName}_{timestamp}";
         var backupPath = Path.Combine(_settings.BackupDirectory, backupName);
 
-        var sourcePath = mod.FullPath;
+        if (Directory.Exists(backupPath) || File.Exists(backupPath))
+            throw new IOException($"Backup already exists: {backupPath}");
+        var sourcePath = ModInstallerService.GetDisabledContentPath(mod.FullPath) ?? mod.FullPath;
 
         // If it's a junction, back up the target content
         if (JunctionHelper.IsJunction(mod.FullPath))
@@ -70,13 +73,14 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using var operation = MutationGate.Enter();
         Directory.CreateDirectory(_settings.BackupDirectory);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         var zipName = $"{mod.FolderName}_{timestamp}.zip";
         var zipPath = Path.Combine(_settings.BackupDirectory, zipName);
 
-        var sourcePath = mod.FullPath;
+        var sourcePath = ModInstallerService.GetDisabledContentPath(mod.FullPath) ?? mod.FullPath;
         if (JunctionHelper.IsJunction(mod.FullPath))
         {
             var target = JunctionHelper.GetJunctionTarget(mod.FullPath);
@@ -99,6 +103,7 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using var operation = MutationGate.Enter();
         Directory.CreateDirectory(_settings.BackupDirectory);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -153,6 +158,7 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using var operation = MutationGate.Enter();
         if (!Directory.Exists(communityFolder))
             throw new DirectoryNotFoundException($"Community folder not found: {communityFolder}");
 
@@ -312,6 +318,7 @@ public class BackupManager
     /// </summary>
     public int CleanOldBackups(int olderThanDays)
     {
+        using var operation = MutationGate.Enter();
         var cutoff = DateTime.Now.AddDays(-olderThanDays);
         int deleted = 0;
 

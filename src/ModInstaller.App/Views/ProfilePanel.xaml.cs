@@ -59,7 +59,7 @@ public partial class ProfilePanel : UserControl
 
     private bool IsReady(string community)
     {
-        if (_mods == null || _isBusy?.Invoke() == true) return false;
+        if (_mods == null || _isBusy?.Invoke() == true || MutationGate.IsBusy) return false;
         var disabled = new DisabledModStorage().GetDirectory(community);
         return _mods.All(mod =>
         {

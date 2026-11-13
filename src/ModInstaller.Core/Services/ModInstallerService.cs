@@ -35,6 +35,7 @@ public class ModInstallerService
         CancellationToken cancellationToken = default,
         Func<string, bool>? confirmReplacement = null)
     {
+        using var operation = MutationGate.Enter();
         string modSourceDir;
         string? tempDir = null;
 
@@ -188,6 +189,7 @@ public class ModInstallerService
     /// </summary>
     public void UninstallMod(Mod mod, string communityFolder, bool createBackup = false)
     {
+        using var operation = MutationGate.Enter();
         var expectedParent = mod.Status == ModStatus.Disabled
             ? new DisabledModStorage().GetDirectory(communityFolder) : Path.GetFullPath(communityFolder);
         var actualParent = Path.GetDirectoryName(Path.GetFullPath(mod.FullPath));
@@ -237,6 +239,7 @@ public class ModInstallerService
 
     public async Task EnableModAsync(Mod mod, string communityFolder, IProgress<FileOperationProgress>? progress = null)
     {
+        using var operation = MutationGate.Enter();
         var disabledPath = Path.Combine(new DisabledModStorage().GetDirectory(communityFolder), mod.FolderName);
         var communityPath = Path.Combine(communityFolder, mod.FolderName);
         if (!Directory.Exists(communityFolder)) throw new DirectoryNotFoundException("Community folder not found.");
@@ -281,6 +284,7 @@ public class ModInstallerService
     /// <summary>Disable without overwriting any existing disabled mod.</summary>
     public async Task DisableModAsync(Mod mod, IProgress<FileOperationProgress>? progress = null)
     {
+        using var operation = MutationGate.Enter();
         var communityFolder = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(mod.FullPath))
             ?? throw new IOException("Cannot identify the mod's Community folder.");
         var disabledDirectory = new DisabledModStorage().GetDirectory(communityFolder);
