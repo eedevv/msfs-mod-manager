@@ -7,6 +7,9 @@ public class ModProfile
 {
     public required string Name { get; set; }
     public string? Description { get; set; }
+    // Null identifies a legacy profile whose installation cannot be inferred safely.
+    public string? CommunityKey { get; set; }
+    public string DisplayName => CommunityKey == null ? $"{Name} (legacy — unassigned)" : Name;
     public DateTime CreatedDate { get; set; } = DateTime.Now;
     public DateTime? LastUsedDate { get; set; }
     public SimVersion SimVersion { get; set; } = SimVersion.Unknown;

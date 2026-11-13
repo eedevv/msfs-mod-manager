@@ -26,13 +26,16 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using var operation = MutationGate.Enter();
         Directory.CreateDirectory(_settings.BackupDirectory);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         var backupName = $"{mod.FolderName}_{timestamp}";
         var backupPath = Path.Combine(_settings.BackupDirectory, backupName);
 
-        var sourcePath = mod.FullPath;
+        if (Directory.Exists(backupPath) || File.Exists(backupPath))
+            throw new IOException($"Backup already exists: {backupPath}");
+        var sourcePath = ModInstallerService.GetDisabledContentPath(mod.FullPath) ?? mod.FullPath;
 
         // If it's a junction, back up the target content
         if (JunctionHelper.IsJunction(mod.FullPath))
@@ -42,12 +45,17 @@ public class BackupManager
                 sourcePath = target;
         }
 
+        if (File.Exists(Path.Combine(sourcePath, ".backup_meta.json")))
+            throw new IOException("This mod already contains .backup_meta.json; refusing to overwrite its file in the backup. Use a full or ZIP backup instead.");
         await _fileOps.CopyDirectoryAsync(sourcePath, backupPath, progress, cancellationToken);
 
         // Write metadata
         var metaPath = Path.Combine(backupPath, ".backup_meta.json");
         var meta = System.Text.Json.JsonSerializer.Serialize(new
         {
+            Manager = "MSFSModManager",
+            Kind = "ModBackup",
+            FormatVersion = 1,
             ModName = mod.FolderName,
             mod.Title,
             mod.Version,
@@ -70,13 +78,14 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using var operation = MutationGate.Enter();
         Directory.CreateDirectory(_settings.BackupDirectory);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         var zipName = $"{mod.FolderName}_{timestamp}.zip";
         var zipPath = Path.Combine(_settings.BackupDirectory, zipName);
 
-        var sourcePath = mod.FullPath;
+        var sourcePath = ModInstallerService.GetDisabledContentPath(mod.FullPath) ?? mod.FullPath;
         if (JunctionHelper.IsJunction(mod.FullPath))
         {
             var target = JunctionHelper.GetJunctionTarget(mod.FullPath);
@@ -85,6 +94,7 @@ public class BackupManager
 
         await Task.Run(() =>
         {
+            FileOperations.RejectNestedLinks(sourcePath, cancellationToken);
             ZipFile.CreateFromDirectory(sourcePath, zipPath, CompressionLevel.Optimal, includeBaseDirectory: true);
         }, cancellationToken);
 
@@ -99,13 +109,18 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using var operation = MutationGate.Enter();
         Directory.CreateDirectory(_settings.BackupDirectory);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         var backupDir = Path.Combine(_settings.BackupDirectory, $"FullBackup_{timestamp}");
+        if (Directory.Exists(backupDir))
+            throw new IOException($"Backup already exists: {backupDir}");
         Directory.CreateDirectory(backupDir);
 
-        var modDirs = Directory.GetDirectories(communityFolder);
+        var modDirs = Directory.GetDirectories(communityFolder)
+            .Where(path => !Path.GetFileName(path).StartsWith(".msfsmm-", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
         int completed = 0;
 
         foreach (var modDir in modDirs)
@@ -134,6 +149,8 @@ public class BackupManager
             });
         }
 
+        await File.WriteAllTextAsync(Path.Combine(backupDir, ".backup_meta.json"),
+            "{\"Manager\":\"MSFSModManager\",\"Kind\":\"FullBackup\",\"FormatVersion\":1}", cancellationToken);
         return backupDir;
     }
 
@@ -147,37 +164,104 @@ public class BackupManager
         IProgress<FileOperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        using var operation = MutationGate.Enter();
+        if (!Directory.Exists(communityFolder))
+            throw new DirectoryNotFoundException($"Community folder not found: {communityFolder}");
+
+        if (File.Exists(backupPath) && Path.GetExtension(backupPath).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            await RestoreZipAsync(backupPath, communityFolder, overwrite, progress, cancellationToken);
+            return;
+        }
         if (!Directory.Exists(backupPath))
-            throw new DirectoryNotFoundException($"Backup not found: {backupPath}");
+            throw new DirectoryNotFoundException($"Backup directory not found: {backupPath}");
 
-        var modName = Path.GetFileName(backupPath) ?? throw new IOException("Invalid backup path");
-
-        // Strip timestamp suffix: "mymod_20240101_120000" → "mymod"
-        // Match pattern: _YYYYMMDD_HHMMSS at the end (exactly 16 chars: _8_6)
-        if (modName.Length > 16)
+        var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(backupPath));
+        var isFullBackup = name.StartsWith("FullBackup_", StringComparison.OrdinalIgnoreCase);
+        if (isFullBackup)
         {
-            var candidate = modName[^16..]; // last 16 chars
-            if (candidate.Length == 16 && candidate[0] == '_' && candidate[9] == '_' &&
-                candidate[1..9].All(char.IsDigit) && candidate[10..].All(char.IsDigit))
-            {
-                modName = modName[..^16];
-            }
-        }
-
-        var destPath = Path.Combine(communityFolder, modName);
-
-        if (Directory.Exists(destPath) || JunctionHelper.IsJunction(destPath))
-        {
+            var folders = Directory.GetDirectories(backupPath);
+            foreach (var folder in folders) FileOperations.ValidatePackageName(Path.GetFileName(folder));
+            // Check all destinations before changing anything when overwrite is not allowed.
             if (!overwrite)
-                throw new IOException($"Mod already exists: {modName}. Set overwrite=true to replace.");
-
-            if (JunctionHelper.IsJunction(destPath))
-                JunctionHelper.RemoveJunction(destPath);
-            else
-                FileOperations.SafeDeleteDirectory(destPath);
+                foreach (var folder in folders)
+                    EnsureDestinationFree(Path.Combine(communityFolder, Path.GetFileName(folder)));
+            foreach (var folder in folders)
+                await RestoreOneAsync(folder, Path.Combine(communityFolder, Path.GetFileName(folder)), overwrite, progress, cancellationToken);
+            return;
         }
 
-        await _fileOps.CopyDirectoryAsync(backupPath, destPath, progress, cancellationToken);
+        name = RemoveTimestamp(name);
+        FileOperations.ValidatePackageName(name);
+        var destPath = Path.Combine(communityFolder, name);
+        if (!overwrite) EnsureDestinationFree(destPath);
+        await RestoreOneAsync(backupPath, destPath, overwrite, progress, cancellationToken);
+    }
+
+    private async Task RestoreZipAsync(string zipPath, string communityFolder, bool overwrite,
+        IProgress<FileOperationProgress>? progress, CancellationToken ct)
+    {
+        // Compressed single-mod backups contain a single base directory; extract into
+        // isolated storage first and use the backup filename as the package identity.
+        var temp = Path.Combine(Path.GetTempPath(), $"MSFSBackupRestore_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temp);
+        try
+        {
+            await _fileOps.ExtractZipAsync(zipPath, temp, progress, ct);
+            var dirs = Directory.GetDirectories(temp);
+            var files = Directory.GetFiles(temp);
+            string source;
+            if (dirs.Length == 1 && files.Length == 0)
+                source = dirs[0];
+            else if (ModScanner.IsValidModDirectory(temp))
+                source = temp;
+            else
+                throw new IOException("ZIP backup must contain exactly one mod folder or a mod at the archive root.");
+            var name = RemoveTimestamp(Path.GetFileNameWithoutExtension(zipPath));
+            FileOperations.ValidatePackageName(name);
+            var dest = Path.Combine(communityFolder, name);
+            if (!overwrite) EnsureDestinationFree(dest);
+            await RestoreOneAsync(source, dest, overwrite, progress, ct);
+        }
+        finally
+        {
+            if (Directory.Exists(temp))
+                try { FileOperations.SafeDeleteDirectory(temp); } catch { }
+        }
+    }
+
+    private static string RemoveTimestamp(string name)
+    {
+        if (name.Length >= 16)
+        {
+            var suffix = name[^16..];
+            if (suffix[0] == '_' && suffix[9] == '_' && suffix[1..9].All(char.IsDigit) && suffix[10..].All(char.IsDigit))
+                return name[..^16];
+        }
+        return name;
+    }
+
+    private static void EnsureDestinationFree(string path)
+    {
+        if (Directory.Exists(path) || File.Exists(path) || JunctionHelper.IsJunction(path))
+            throw new IOException($"Destination already exists: {path}. Move or back it up before restoring; nothing was overwritten.");
+    }
+
+    private async Task RestoreOneAsync(string source, string dest, bool overwrite, IProgress<FileOperationProgress>? progress, CancellationToken ct)
+    {
+        var stage = Path.Combine(Path.GetDirectoryName(dest)!, $".msfsmm-restore-{Guid.NewGuid():N}");
+        try
+        {
+            await _fileOps.CopyDirectoryAsync(source, stage, progress, ct);
+            // Keep metadata files: an arbitrary backup may contain user data with this name.
+            ct.ThrowIfCancellationRequested();
+            RecoverableSwap.Commit(stage, dest, overwrite);
+        }
+        finally
+        {
+            if (Directory.Exists(stage))
+                try { FileOperations.SafeDeleteDirectory(stage); } catch { }
+        }
     }
 
     /// <summary>
@@ -240,22 +324,39 @@ public class BackupManager
     /// </summary>
     public int CleanOldBackups(int olderThanDays)
     {
+        using var operation = MutationGate.Enter();
         var cutoff = DateTime.Now.AddDays(-olderThanDays);
         int deleted = 0;
 
-        foreach (var backup in ListBackups())
+        if (!Directory.Exists(_settings.BackupDirectory)) return 0;
+        foreach (var path in Directory.EnumerateDirectories(_settings.BackupDirectory))
         {
-            if (backup.CreatedDate < cutoff)
-            {
-                if (backup.IsCompressed)
-                    File.Delete(backup.Path);
-                else
-                    FileOperations.SafeDeleteDirectory(backup.Path);
-                deleted++;
-            }
+            // Do not follow a directory link or assume older generic metadata proves ownership.
+            if (File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint) ||
+                Directory.GetCreationTime(path) >= cutoff || !HasManagedBackupMarker(path)) continue;
+            FileOperations.SafeDeleteDirectory(path);
+            deleted++;
         }
 
         return deleted;
+    }
+    private static bool HasManagedBackupMarker(string directory)
+    {
+        var path = Path.Combine(directory, ".backup_meta.json");
+        try
+        {
+            if (!File.Exists(path) || File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint) || new FileInfo(path).Length > 65536)
+                return false;
+            using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            var root = json.RootElement;
+            return root.TryGetProperty("Manager", out var manager) && manager.GetString() == "MSFSModManager" &&
+                root.TryGetProperty("FormatVersion", out var version) && version.TryGetInt32(out var v) && v == 1 &&
+                root.TryGetProperty("Kind", out var kind) && kind.GetString() is "ModBackup" or "FullBackup";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 }
 

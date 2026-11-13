@@ -61,6 +61,7 @@ public class V2Migrator
         if (!Directory.Exists(profilesDir)) return 0;
 
         int imported = 0;
+        var existing = db.GetAllProfiles().Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var profileFile in Directory.GetFiles(profilesDir, "*.profile"))
         {
@@ -72,6 +73,9 @@ public class V2Migrator
                     Name = Path.GetFileNameWithoutExtension(profileFile),
                     Description = "Imported from V2"
                 };
+
+                // Never overwrite a profile already edited in the current manager.
+                if (!existing.Add(profile.Name)) continue;
 
                 string section = "";
                 foreach (var line in lines)

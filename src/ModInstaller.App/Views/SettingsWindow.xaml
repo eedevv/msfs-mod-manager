@@ -324,12 +324,12 @@
                         <Border Background="{DynamicResource BackgroundMediumBrush}" CornerRadius="8"
                                 Padding="16" Margin="0,0,0,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                             <StackPanel>
-                                <CheckBox x:Name="CheckUpdatesCheck" Style="{StaticResource ToggleSwitchStyle}"
+                                <CheckBox x:Name="CheckUpdatesCheck" IsEnabled="False" ToolTip="Not implemented yet" ToolTipService.ShowOnDisabled="True" Style="{StaticResource ToggleSwitchStyle}"
                                           Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10">
                                     <TextBlock x:Name="CheckUpdatesLabel" Text="Check for mod updates on startup"
                                                Foreground="{DynamicResource TextPrimaryBrush}" />
                                 </CheckBox>
-                                <CheckBox x:Name="MinimizeToTrayCheck" Style="{StaticResource ToggleSwitchStyle}"
+                                <CheckBox x:Name="MinimizeToTrayCheck" IsEnabled="False" ToolTip="Not implemented yet" ToolTipService.ShowOnDisabled="True" Style="{StaticResource ToggleSwitchStyle}"
                                           Foreground="{DynamicResource TextPrimaryBrush}">
                                     <TextBlock x:Name="MinimizeToTrayLabel" Text="Minimize to system tray"
                                                Foreground="{DynamicResource TextPrimaryBrush}" />

@@ -10,12 +10,9 @@ namespace ModInstaller.Core.Services;
 /// </summary>
 public class ConflictEngine
 {
-    private readonly ModDatabase _db;
-
-    public ConflictEngine(ModDatabase db)
-    {
-        _db = db;
-    }
+    // The scan is computed in the background. Do not use the UI's shared SQLite
+    // connection from that worker; the old conflict table was not read by the UI.
+    public ConflictEngine(ModDatabase db) => ArgumentNullException.ThrowIfNull(db);
 
     /// <summary>
     /// Scans all mods for file conflicts (files with the same relative path).
@@ -37,6 +34,10 @@ public class ConflictEngine
         // Build a file index: relative path → list of mods that contain it
         var fileIndex = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         int scanned = 0;
+        int indexedFiles = 0;
+        const int maxIndexedFiles = 1_000_000;
+        const int maxPairs = 100_000;
+        const int maxMatches = 2_000_000;
 
         foreach (var mod in mods)
         {
@@ -44,13 +45,17 @@ public class ConflictEngine
             scanned++;
             progress?.Report($"Indexing {mod.FolderName} ({scanned}/{mods.Count})...");
 
-            if (!Directory.Exists(mod.FullPath)) continue;
+            if (!Directory.Exists(mod.FullPath))
+                throw new IOException($"Conflict scan incomplete: {mod.FolderName} is unavailable ({mod.FullPath}).");
 
             try
             {
-                var files = Directory.GetFiles(mod.FullPath, "*", SearchOption.AllDirectories);
+                var files = EnumerateFilesWithoutLinks(mod.FullPath, cancellationToken);
                 foreach (var file in files)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (++indexedFiles > maxIndexedFiles)
+                        throw new IOException($"Conflict scan stopped after {maxIndexedFiles:N0} files; results would be incomplete.");
                     var relativePath = Path.GetRelativePath(mod.FullPath, file).ToLowerInvariant();
 
                     // Skip metadata files
@@ -66,14 +71,19 @@ public class ConflictEngine
                     modList.Add(mod.FolderName);
                 }
             }
-            catch { /* Skip mods we can't read */ }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                throw new IOException($"Conflict scan incomplete for {mod.FolderName}: {ex.Message}", ex);
+            }
         }
 
         // Find files that appear in multiple mods
         var conflictPairs = new Dictionary<(string, string), List<string>>();
 
+        int matches = 0;
         foreach (var (relativePath, modNames) in fileIndex)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (modNames.Count < 2) continue;
 
             // Generate all pairs
@@ -81,6 +91,9 @@ public class ConflictEngine
             {
                 for (int j = i + 1; j < modNames.Count; j++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (++matches > maxMatches)
+                        throw new IOException($"Conflict scan exceeded {maxMatches:N0} matches; results would be incomplete.");
                     var key = (
                         string.Compare(modNames[i], modNames[j], StringComparison.OrdinalIgnoreCase) < 0
                             ? modNames[i] : modNames[j],
@@ -90,6 +103,8 @@ public class ConflictEngine
 
                     if (!conflictPairs.TryGetValue(key, out var files))
                     {
+                        if (conflictPairs.Count >= maxPairs)
+                            throw new IOException($"Conflict scan exceeded {maxPairs:N0} mod pairs; results would be incomplete.");
                         files = [];
                         conflictPairs[key] = files;
                     }
@@ -111,11 +126,30 @@ public class ConflictEngine
             };
 
             results.Add(result);
-            _db.SaveConflict(result);
         }
 
         progress?.Report($"Scan complete. Found {results.Count} conflict(s).");
         return results;
+    }
+
+    private static IEnumerable<string> EnumerateFilesWithoutLinks(string root, CancellationToken ct)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root); // The mod root itself may be an intentional junction.
+        var options = new EnumerationOptions { RecurseSubdirectories = false, AttributesToSkip = 0, IgnoreInaccessible = false };
+        while (pending.Count > 0)
+        {
+            ct.ThrowIfCancellationRequested();
+            foreach (var entry in Directory.EnumerateFileSystemEntries(pending.Pop(), "*", options))
+            {
+                ct.ThrowIfCancellationRequested();
+                var attrs = File.GetAttributes(entry);
+                if (attrs.HasFlag(FileAttributes.ReparsePoint))
+                    throw new IOException($"Nested link cannot be scanned safely: {entry}");
+                if (attrs.HasFlag(FileAttributes.Directory)) pending.Push(entry);
+                else yield return entry;
+            }
+        }
     }
 
     /// <summary>

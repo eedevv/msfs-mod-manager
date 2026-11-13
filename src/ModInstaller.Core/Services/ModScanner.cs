@@ -19,11 +19,15 @@ public class ModScanner
     /// <summary>
     /// Scans a Community folder and returns all detected mods.
     /// </summary>
-    public async Task<List<Mod>> ScanCommunityFolderAsync(
+    public Task<List<Mod>> ScanCommunityFolderAsync(
         string communityFolder,
         SimVersion simVersion = SimVersion.Unknown,
         IProgress<string>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => ScanCommunityFolderCoreAsync(communityFolder, simVersion, progress, cancellationToken), cancellationToken);
+
+    private async Task<List<Mod>> ScanCommunityFolderCoreAsync(
+        string communityFolder, SimVersion simVersion, IProgress<string>? progress, CancellationToken cancellationToken)
     {
         var mods = new List<Mod>();
 
@@ -37,11 +41,29 @@ public class ModScanner
             cancellationToken.ThrowIfCancellationRequested();
 
             var folderName = Path.GetFileName(dir);
+            if (folderName.StartsWith(".msfsmm-stage-", StringComparison.OrdinalIgnoreCase) ||
+                folderName.StartsWith(".msfsmm-restore-", StringComparison.OrdinalIgnoreCase) ||
+                folderName.StartsWith(RecoverableSwap.RecoveryPrefix, StringComparison.OrdinalIgnoreCase))
+                continue;
             progress?.Report($"Scanning {folderName}...");
 
-            var mod = await ScanModDirectoryAsync(dir, simVersion);
-            if (mod != null)
-                mods.Add(mod);
+            try
+            {
+                var mod = await ScanModDirectoryAsync(dir, simVersion).ConfigureAwait(false);
+                if (mod != null) mods.Add(mod);
+                else throw new IOException("The mod folder became unavailable during the scan.");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                mods.Add(new Mod
+                {
+                    FolderName = folderName,
+                    FullPath = dir,
+                    SimVersion = simVersion,
+                    Health = HealthStatus.Critical,
+                    HealthIssues = [$"Could not scan this mod: {ex.Message}"]
+                });
+            }
         }
 
         return mods;
@@ -122,8 +144,7 @@ public class ModScanner
         // Fallback: calculate size from filesystem if layout.json didn't provide it
         if (mod.SizeBytes == 0)
         {
-            mod.SizeBytes = FileOperations.GetDirectorySize(modPath);
-            mod.FileCount = FileOperations.GetFileCount(modPath);
+            (mod.SizeBytes, mod.FileCount) = FileOperations.GetDirectoryStats(modPath);
         }
 
         // Fallback: detect type from folder structure if manifest didn't provide it
@@ -160,7 +181,7 @@ public class ModScanner
             "AIRCRAFT" or "aircraft" => ModType.Aircraft,
             "SCENERY" or "scenery" => ModType.Scenery,
             "LIVERY" or "livery" => ModType.Livery,
-            "INSTRUMENT" or "instruments" => ModType.Instruments,
+            "instrument" or "instruments" => ModType.Instruments,
             "MISSION" or "missions" or "mission" => ModType.Missions,
             _ => DetectModTypeFromStructure(modPath)
         };
@@ -224,49 +245,29 @@ public class ModScanner
     /// - single folder containing the mod
     /// - nested folders (author/mod/content)
     /// </summary>
-    public static string? FindModRootInExtractedArchive(string extractedPath)
-    {
-        // Check if the extracted path itself is a mod
-        if (IsValidModDirectory(extractedPath))
-            return extractedPath;
+    public static string? FindModRootInExtractedArchive(string extractedPath) =>
+        FindModRootsInExtractedArchive(extractedPath).FirstOrDefault();
 
-        // BFS search up to 4 levels deep
+    /// <summary>Find independent package roots, without descending into an already found package.</summary>
+    public static List<string> FindModRootsInExtractedArchive(string extractedPath)
+    {
+        var roots = new List<string>();
+        if (!Directory.Exists(extractedPath)) return roots;
         var queue = new Queue<(string Path, int Depth)>();
         queue.Enqueue((extractedPath, 0));
-
         while (queue.Count > 0)
         {
-            var (currentPath, depth) = queue.Dequeue();
-            if (depth > 4) continue;
-
-            try
+            var (path, depth) = queue.Dequeue();
+            if (IsValidModDirectory(path))
             {
-                foreach (var subDir in Directory.GetDirectories(currentPath))
-                {
-                    if (IsValidModDirectory(subDir))
-                        return subDir;
-                    if (depth < 4)
-                        queue.Enqueue((subDir, depth + 1));
-                }
+                roots.Add(path);
+                continue;
             }
-            catch { /* Skip inaccessible directories */ }
+            if (depth >= 4) continue;
+            foreach (var child in Directory.GetDirectories(path))
+                queue.Enqueue((child, depth + 1));
         }
-
-        // Last resort: if the extracted folder has only one subfolder, use it
-        // (common pattern: ZIP contains a single folder that IS the mod even without manifest)
-        try
-        {
-            var dirs = Directory.GetDirectories(extractedPath);
-            if (dirs.Length == 1)
-            {
-                var singleDir = dirs[0];
-                // If it has any content at all, treat it as the mod
-                if (Directory.GetFiles(singleDir, "*", SearchOption.AllDirectories).Length > 0)
-                    return singleDir;
-            }
-        }
-        catch { }
-
-        return null;
+        return roots;
     }
+
 }

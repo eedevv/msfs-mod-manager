@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/ModInstaller.App/ModInstaller.App.csproj" />
+    <None Include="../../src/ModInstaller.App/MainWindow.xaml" Link="MainWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

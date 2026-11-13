@@ -32,8 +32,10 @@ public class ModInstallerService
         SimVersion simVersion,
         bool useJunction,
         IProgress<FileOperationProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<string, bool>? confirmReplacement = null)
     {
+        using var operation = MutationGate.Enter();
         string modSourceDir;
         string? tempDir = null;
 
@@ -48,13 +50,34 @@ public class ModInstallerService
                 progress?.Report(new FileOperationProgress { CurrentFile = "Extracting archive..." });
 
                 await ExtractArchiveAsync(sourcePath, tempDir, progress, cancellationToken);
+                // 7-Zip may create links; never traverse them while identifying or copying packages.
+                await Task.Run(() => FileOperations.RejectNestedLinks(tempDir, cancellationToken), cancellationToken);
 
-                // Find the actual mod root inside the extracted content
-                var modRoot = ModScanner.FindModRootInExtractedArchive(tempDir);
-                if (modRoot == null)
+                var modRoots = ModScanner.FindModRootsInExtractedArchive(tempDir);
+                if (modRoots.Count == 0)
                     throw new InvalidOperationException("No valid MSFS mod found in the archive.");
-
-                modSourceDir = modRoot;
+                var names = modRoots.Select(root => string.Equals(root, tempDir, StringComparison.OrdinalIgnoreCase)
+                    ? Path.GetFileNameWithoutExtension(sourcePath) : Path.GetFileName(root)).ToList();
+                if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Count)
+                    throw new IOException("Archive contains duplicate or invalid package names; nothing was installed.");
+                foreach (var name in names) FileOperations.ValidatePackageName(name);
+                // Ask about all existing destinations before installing any package.
+                var replacements = new List<bool>();
+                foreach (var name in names)
+                {
+                    var destination = Path.Combine(communityFolder, name);
+                    var exists = Directory.Exists(destination) || JunctionHelper.IsJunction(destination);
+                    if (File.Exists(destination) && !exists)
+                        throw new IOException($"A file exists at {destination}; nothing was installed.");
+                    if (exists && (confirmReplacement == null || !confirmReplacement(destination)))
+                        throw new IOException($"Replacement declined for {name}; nothing was installed.");
+                    replacements.Add(exists);
+                }
+                Mod? lastArchiveMod = null;
+                for (int i = 0; i < modRoots.Count; i++)
+                    lastArchiveMod = await InstallSingleModAsync(modRoots[i], communityFolder, simVersion, useJunction,
+                        progress, cancellationToken, names[i], replacements[i]);
+                return lastArchiveMod;
             }
             else if (Directory.Exists(sourcePath))
             {
@@ -72,7 +95,8 @@ public class ModInstallerService
                     Mod? lastMod = null;
                     foreach (var subMod in subMods)
                     {
-                        lastMod = await InstallSingleModAsync(subMod, communityFolder, simVersion, useJunction, progress, cancellationToken);
+                        lastMod = await InstallSingleModAsync(subMod, communityFolder, simVersion, useJunction, progress, cancellationToken,
+                            confirmReplacement: confirmReplacement);
                     }
                     return lastMod;
                 }
@@ -84,7 +108,8 @@ public class ModInstallerService
                 throw new FileNotFoundException($"Source not found: {sourcePath}");
             }
 
-            return await InstallSingleModAsync(modSourceDir, communityFolder, simVersion, useJunction, progress, cancellationToken);
+            return await InstallSingleModAsync(modSourceDir, communityFolder, simVersion, useJunction, progress, cancellationToken,
+                confirmReplacement: confirmReplacement);
         }
         finally
         {
@@ -102,37 +127,53 @@ public class ModInstallerService
         SimVersion simVersion,
         bool useJunction,
         IProgress<FileOperationProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? folderName = null,
+        bool? approvedReplacement = null,
+        Func<string, bool>? confirmReplacement = null)
     {
-        var modFolderName = Path.GetFileName(modSourceDir);
+        var modFolderName = folderName ?? Path.GetFileName(Path.TrimEndingDirectorySeparator(modSourceDir));
+        FileOperations.ValidatePackageName(modFolderName);
         var destPath = Path.Combine(communityFolder, modFolderName);
 
-        // Check for existing mod
-        if (Directory.Exists(destPath) || JunctionHelper.IsJunction(destPath))
+        var exists = Directory.Exists(destPath) || JunctionHelper.IsJunction(destPath);
+        if (File.Exists(destPath) && !exists)
+            throw new IOException($"A file already exists at {destPath}.");
+        var overwrite = approvedReplacement ?? (exists && confirmReplacement?.Invoke(destPath) == true);
+        if (exists && !overwrite)
+            throw new IOException($"A mod already exists at {destPath}. Replacement was not approved.");
+
+        var baseDir = useJunction
+            ? new DisabledModStorage().GetLibraryDirectory(_settings.ModLibraryDirectory, communityFolder)
+            : communityFolder;
+        Directory.CreateDirectory(baseDir);
+        var finalContentPath = useJunction ? Path.Combine(baseDir, modFolderName) : destPath;
+        // Never replace or delete an existing library target; it may still be shared.
+        if (useJunction && (Directory.Exists(finalContentPath) || File.Exists(finalContentPath) || JunctionHelper.IsJunction(finalContentPath)))
+            finalContentPath = Path.Combine(baseDir, $"{modFolderName}__{Guid.NewGuid():N}");
+
+        var stagePath = Path.Combine(baseDir, $".msfsmm-stage-{Guid.NewGuid():N}");
+        string? stagedLink = null;
+        try
         {
-            // Remove existing (overwrite)
-            if (JunctionHelper.IsJunction(destPath))
-                JunctionHelper.RemoveJunction(destPath);
+            await _fileOps.CopyDirectoryAsync(modSourceDir, stagePath, progress, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (useJunction)
+            {
+                Directory.Move(stagePath, finalContentPath);
+                stagedLink = Path.Combine(communityFolder, $".msfsmm-stage-{Guid.NewGuid():N}");
+                JunctionHelper.CreateJunction(stagedLink, finalContentPath);
+                RecoverableSwap.Commit(stagedLink, destPath, overwrite);
+            }
             else
-                FileOperations.SafeDeleteDirectory(destPath);
+                RecoverableSwap.Commit(stagePath, destPath, overwrite);
         }
-
-        if (useJunction)
+        finally
         {
-            // Copy to library, junction into Community
-            var libraryPath = Path.Combine(_settings.ModLibraryDirectory, modFolderName);
-            Directory.CreateDirectory(_settings.ModLibraryDirectory);
-
-            if (Directory.Exists(libraryPath))
-                FileOperations.SafeDeleteDirectory(libraryPath);
-
-            await _fileOps.CopyDirectoryAsync(modSourceDir, libraryPath, progress, cancellationToken);
-            JunctionHelper.CreateJunction(destPath, libraryPath);
-        }
-        else
-        {
-            // Direct copy to Community
-            await _fileOps.CopyDirectoryAsync(modSourceDir, destPath, progress, cancellationToken);
+            if (stagedLink != null && JunctionHelper.IsJunction(stagedLink))
+                try { JunctionHelper.RemoveJunction(stagedLink); } catch { }
+            if (Directory.Exists(stagePath))
+                try { FileOperations.SafeDeleteDirectory(stagePath); } catch { }
         }
 
         // Scan the installed mod
@@ -140,7 +181,7 @@ public class ModInstallerService
         if (mod != null)
         {
             mod.InstalledDate = DateTime.Now;
-            _db.UpsertMod(mod);
+            _db.UpsertCommunityMod(communityFolder, mod);
             _db.LogOperation("Install", mod.FolderName, $"Installed from {modSourceDir}");
         }
 
@@ -150,116 +191,137 @@ public class ModInstallerService
     /// <summary>
     /// Uninstalls a mod from the Community folder.
     /// </summary>
-    public void UninstallMod(Mod mod, bool createBackup = false)
+    public void UninstallMod(Mod mod, string communityFolder, bool createBackup = false)
     {
+        using var operation = MutationGate.Enter();
+        var expectedParent = mod.Status == ModStatus.Disabled
+            ? new DisabledModStorage().GetDirectory(communityFolder) : Path.GetFullPath(communityFolder);
+        var actualParent = Path.GetDirectoryName(Path.GetFullPath(mod.FullPath));
+        if (actualParent == null || !string.Equals(Path.TrimEndingDirectorySeparator(actualParent),
+                Path.TrimEndingDirectorySeparator(expectedParent), StringComparison.OrdinalIgnoreCase))
+            throw new IOException("The mod does not belong to the selected Community folder; nothing was removed.");
+        var contentPath = GetDisabledContentPath(mod.FullPath) ?? mod.FullPath;
+        if (JunctionHelper.IsJunction(mod.FullPath))
+            contentPath = JunctionHelper.GetJunctionTarget(mod.FullPath)
+                ?? throw new IOException("Cannot resolve the mod link; nothing was removed.");
+
         if (createBackup)
         {
+            if (!Directory.Exists(contentPath))
+                throw new DirectoryNotFoundException($"Mod content not found: {contentPath}");
             var backupPath = Path.Combine(_settings.BackupDirectory, $"{mod.FolderName}_{DateTime.Now:yyyyMMdd_HHmmss}");
             Directory.CreateDirectory(_settings.BackupDirectory);
-
-            if (JunctionHelper.IsJunction(mod.FullPath))
-            {
-                var target = JunctionHelper.GetJunctionTarget(mod.FullPath);
-                if (target != null && Directory.Exists(target))
-                    CopyDirSync(target, backupPath);
-            }
-            else
-            {
-                CopyDirSync(mod.FullPath, backupPath);
-            }
+            if (Directory.Exists(backupPath))
+                throw new IOException($"Backup already exists: {backupPath}");
+            CopyDirSync(contentPath, backupPath);
         }
 
-        // Remove junction or directory
+        // A link target may be shared or owned by another application. Never delete it.
         if (JunctionHelper.IsJunction(mod.FullPath))
-        {
-            var libraryPath = JunctionHelper.GetJunctionTarget(mod.FullPath);
             JunctionHelper.RemoveJunction(mod.FullPath);
-
-            // Also remove from library
-            if (libraryPath != null && Directory.Exists(libraryPath))
-                FileOperations.SafeDeleteDirectory(libraryPath);
-        }
         else
-        {
             FileOperations.SafeDeleteDirectory(mod.FullPath);
-        }
 
         _db.LogOperation("Uninstall", mod.FolderName, createBackup ? "Backed up before uninstall" : null);
-        _db.RemoveMod(mod.FolderName);
+        _db.RemoveCommunityMod(communityFolder, mod.FolderName);
     }
 
     /// <summary>
     /// Enables a mod by creating a junction/copy from disabled storage to Community.
     /// </summary>
+    public static string? GetDisabledContentPath(string disabledPath)
+    {
+        var marker = Path.Combine(disabledPath, ".modmanager_disabled");
+        if (!File.Exists(marker)) return null;
+        var value = File.ReadAllText(marker).Trim();
+        const string prefix = "library_path=";
+        if (!value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(value[prefix.Length..]))
+            throw new IOException($"Invalid disabled-mod marker: {marker}");
+        return value[prefix.Length..];
+    }
+
     public async Task EnableModAsync(Mod mod, string communityFolder, IProgress<FileOperationProgress>? progress = null)
     {
-        var disabledPath = Path.Combine(AppSettings.DisabledModsDirectory, mod.FolderName);
+        using var operation = MutationGate.Enter();
+        var disabledPath = Path.Combine(new DisabledModStorage().GetDirectory(communityFolder), mod.FolderName);
         var communityPath = Path.Combine(communityFolder, mod.FolderName);
+        if (!Directory.Exists(communityFolder)) throw new DirectoryNotFoundException("Community folder not found.");
+        if (!Directory.Exists(disabledPath)) throw new DirectoryNotFoundException($"Disabled mod not found: {disabledPath}");
+        if (Directory.Exists(communityPath) || JunctionHelper.IsJunction(communityPath))
+            throw new IOException($"Community destination already exists: {communityPath}");
 
-        if (!Directory.Exists(disabledPath)) return;
-
-        if (_settings.UseJunctions)
+        var originalTarget = GetDisabledContentPath(disabledPath);
+        if (originalTarget != null)
         {
-            var libraryPath = Path.Combine(_settings.ModLibraryDirectory, mod.FolderName);
-
-            if (!Directory.Exists(libraryPath))
+            if (!Directory.Exists(originalTarget))
+                throw new DirectoryNotFoundException($"Disabled mod's original content is unavailable: {originalTarget}");
+            // Recreate the original link regardless of today's library settings.
+            JunctionHelper.CreateJunction(communityPath, originalTarget);
+            FileOperations.SafeDeleteDirectory(disabledPath);
+        }
+        else if (_settings.UseJunctions)
+        {
+            var libraryDirectory = new DisabledModStorage().GetLibraryDirectory(_settings.ModLibraryDirectory, communityFolder);
+            var libraryPath = Path.Combine(libraryDirectory, mod.FolderName);
+            if (Directory.Exists(libraryPath) || JunctionHelper.IsJunction(libraryPath))
+                throw new IOException($"Library destination already exists: {libraryPath}. No files were removed.");
+            Directory.CreateDirectory(libraryDirectory);
+            await _fileOps.MoveDirectoryAsync(disabledPath, libraryPath, progress);
+            try { JunctionHelper.CreateJunction(communityPath, libraryPath); }
+            catch
             {
-                // Move from disabled to library
-                await _fileOps.MoveDirectoryAsync(disabledPath, libraryPath, progress);
+                // Preserve the original disabled state when link creation fails.
+                await _fileOps.MoveDirectoryAsync(libraryPath, disabledPath, progress);
+                throw;
             }
-            else
-            {
-                FileOperations.SafeDeleteDirectory(disabledPath);
-            }
-
-            JunctionHelper.CreateJunction(communityPath, libraryPath);
         }
         else
-        {
             await _fileOps.MoveDirectoryAsync(disabledPath, communityPath, progress);
-        }
 
         mod.Status = ModStatus.Enabled;
         mod.FullPath = communityPath;
-        _db.UpsertMod(mod);
+        _db.UpsertCommunityMod(communityFolder, mod);
         _db.LogOperation("Enable", mod.FolderName);
     }
 
-    /// <summary>
-    /// Disables a mod by moving it from Community to disabled storage.
-    /// </summary>
+    /// <summary>Disable without overwriting any existing disabled mod.</summary>
     public async Task DisableModAsync(Mod mod, IProgress<FileOperationProgress>? progress = null)
     {
-        Directory.CreateDirectory(AppSettings.DisabledModsDirectory);
-        var disabledPath = Path.Combine(AppSettings.DisabledModsDirectory, mod.FolderName);
+        using var operation = MutationGate.Enter();
+        var communityFolder = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(mod.FullPath))
+            ?? throw new IOException("Cannot identify the mod's Community folder.");
+        var disabledDirectory = new DisabledModStorage().GetDirectory(communityFolder);
+        Directory.CreateDirectory(disabledDirectory);
+        var disabledPath = Path.Combine(disabledDirectory, mod.FolderName);
+        if (Directory.Exists(disabledPath) || File.Exists(disabledPath))
+            throw new IOException($"Disabled destination already exists: {disabledPath}. No files were removed.");
 
         if (JunctionHelper.IsJunction(mod.FullPath))
         {
-            // Just remove the junction — mod stays in library
-            JunctionHelper.RemoveJunction(mod.FullPath);
-
-            // Copy from library to disabled for tracking
-            var libraryPath = mod.LibraryPath ?? Path.Combine(_settings.ModLibraryDirectory, mod.FolderName);
-            if (Directory.Exists(libraryPath) && !Directory.Exists(disabledPath))
+            var libraryPath = JunctionHelper.GetJunctionTarget(mod.FullPath)
+                ?? throw new IOException("Cannot resolve the mod link; nothing was removed.");
+            if (!Directory.Exists(libraryPath))
+                throw new DirectoryNotFoundException($"Link target is unavailable: {libraryPath}");
+            Directory.CreateDirectory(disabledPath);
+            try
             {
-                // Create a marker file instead of copying everything
-                Directory.CreateDirectory(disabledPath);
-                await File.WriteAllTextAsync(
-                    Path.Combine(disabledPath, ".modmanager_disabled"),
+                await File.WriteAllTextAsync(Path.Combine(disabledPath, ".modmanager_disabled"),
                     $"library_path={libraryPath}");
+                JunctionHelper.RemoveJunction(mod.FullPath);
+            }
+            catch
+            {
+                FileOperations.SafeDeleteDirectory(disabledPath);
+                throw;
             }
         }
         else
-        {
-            if (Directory.Exists(disabledPath))
-                FileOperations.SafeDeleteDirectory(disabledPath);
-
             await _fileOps.MoveDirectoryAsync(mod.FullPath, disabledPath, progress);
-        }
 
         mod.Status = ModStatus.Disabled;
         mod.FullPath = disabledPath;
-        _db.UpsertMod(mod);
+        _db.UpsertCommunityMod(communityFolder, mod);
         _db.LogOperation("Disable", mod.FolderName);
     }
 
@@ -269,11 +331,7 @@ public class ModInstallerService
         path.EndsWith(".rar", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Extracts any archive using multiple strategies with fallbacks:
-    /// 1. .NET ZipFile (for .zip)
-    /// 2. Windows built-in tar command (handles most ZIPs, built into Win10+)
-    /// 3. 7-Zip (for .7z, .rar, and as fallback for corrupt ZIPs)
-    /// 4. PowerShell Expand-Archive (last resort for .zip)
+    /// Extracts ZIPs using the validated .NET extractor and 7z/RAR using installed 7-Zip.
     /// </summary>
     private async Task ExtractArchiveAsync(
         string archivePath, string destDir,
@@ -291,30 +349,16 @@ public class ModInstallerService
                 await _fileOps.ExtractZipAsync(archivePath, destDir, progress, ct);
                 return;
             }
-            catch
+            // A failed ZIP validation or extraction must not be retried through an
+            // extractor with different path/link handling.
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // ZipFile failed (corrupt central directory, etc.) — try fallbacks
-                CleanDirectory(destDir);
+                throw new IOException($"ZIP extraction failed: {ex.Message}", ex);
             }
-
-            // Strategy 2: Windows tar (built into Win10+, handles many ZIP variants)
-            try
-            {
-                await RunProcessAsync("tar", $"-xf \"{archivePath}\" -C \"{destDir}\"", ct);
-                if (Directory.GetFileSystemEntries(destDir).Length > 0) return;
-            }
-            catch { CleanDirectory(destDir); }
-
-            // Strategy 3: PowerShell Expand-Archive
-            try
-            {
-                await RunProcessAsync("powershell", $"-NoProfile -Command \"Expand-Archive -LiteralPath '{archivePath}' -DestinationPath '{destDir}' -Force\"", ct);
-                if (Directory.GetFileSystemEntries(destDir).Length > 0) return;
-            }
-            catch { CleanDirectory(destDir); }
         }
 
-        // Strategy 4: 7-Zip (works for all formats including corrupt ZIPs)
+        // 7-Zip is required for non-ZIP formats.
         var sevenZip = Find7Zip();
         if (sevenZip != null)
         {
@@ -323,11 +367,15 @@ public class ModInstallerService
                 await RunProcessAsync(sevenZip, $"x \"{archivePath}\" -o\"{destDir}\" -y", ct);
                 if (Directory.GetFileSystemEntries(destDir).Length > 0) return;
             }
-            catch { CleanDirectory(destDir); }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                throw new IOException($"7-Zip extraction failed: {ex.Message}", ex);
+            }
         }
 
         // All strategies failed
-        var tried = ext == ".zip" ? ".NET ZipFile, tar, PowerShell" : "extraction";
+        var tried = ext == ".zip" ? ".NET ZipFile" : "extraction";
         if (sevenZip != null) tried += ", 7-Zip";
         throw new IOException($"Failed to extract {Path.GetFileName(archivePath)}. Tried: {tried}. The archive may be corrupted." +
             (sevenZip == null ? " Install 7-Zip (7-zip.org) for better archive support." : ""));
@@ -370,36 +418,30 @@ public class ModInstallerService
             CreateNoWindow = true
         }) ?? throw new IOException($"Failed to start {fileName}");
 
-        if (!process.WaitForExit(120000)) // 2 minute timeout
-        {
-            try { process.Kill(); } catch { }
-            throw new TimeoutException($"{fileName} timed out");
-        }
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            throw new IOException($"{fileName} failed (exit {process.ExitCode}): {error}");
-        }
-    }
-
-    private static void CleanDirectory(string path)
-    {
+        // Drain both pipes concurrently so verbose extractors cannot block on a full buffer.
+        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stderr = process.StandardError.ReadToEndAsync();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromMinutes(10));
         try
         {
-            foreach (var entry in Directory.GetFileSystemEntries(path))
-            {
-                if (File.Exists(entry)) File.Delete(entry);
-                else if (Directory.Exists(entry)) Directory.Delete(entry, true);
-            }
+            await process.WaitForExitAsync(timeout.Token);
         }
-        catch { }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { }
+            if (ct.IsCancellationRequested) throw;
+            throw new TimeoutException($"{fileName} timed out");
+        }
+        await stdout;
+        var error = await stderr;
+        if (process.ExitCode != 0)
+            throw new IOException($"{fileName} failed (exit {process.ExitCode}): {error}");
     }
 
     private static void CopyDirSync(string source, string dest)
     {
+        FileOperations.RejectNestedLinks(source);
         Directory.CreateDirectory(dest);
         foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
         {

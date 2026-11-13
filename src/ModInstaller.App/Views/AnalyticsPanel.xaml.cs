@@ -13,7 +13,16 @@ public partial class AnalyticsPanel : UserControl
 
     public void Refresh(ObservableCollection<Mod> mods)
     {
-        if (mods.Count == 0) return;
+        if (mods.Count == 0)
+        {
+            TotalMods.Text = "0";
+            TotalSize.Text = FormatSize(0);
+            JunctionCount.Text = "0";
+            DisabledCount.Text = "0";
+            TypeBreakdown.ItemsSource = null;
+            LargestMods.ItemsSource = null;
+            return;
+        }
 
         // Summary stats
         TotalMods.Text = mods.Count.ToString();

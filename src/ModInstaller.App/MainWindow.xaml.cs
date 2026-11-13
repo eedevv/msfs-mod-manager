@@ -15,12 +15,16 @@ public partial class MainWindow : Window
     private MainViewModel ViewModel => (MainViewModel)DataContext;
     private readonly HashSet<string> _initializedPages = ["Mods"];
     private readonly Action _localizationHandler;
+    private bool _legacyMigrationPrompted;
+    private bool _initializationComplete;
+    private readonly HashSet<string> _legacyNotesPrompted = [];
 
     public MainWindow()
     {
         InitializeComponent();
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         // Apply localization on load and when language changes
         Loaded += (_, _) => ApplyLocalization();
@@ -52,16 +56,21 @@ public partial class MainWindow : Window
     {
         var startupTimer = System.Diagnostics.Stopwatch.StartNew();
 
-        RestoreWindowPosition();
         await ViewModel.InitializeAsync();
+        RestoreWindowPosition();
+        _initializationComplete = true;
+        await PromptLegacyMigrationAsync();
+        await PromptLegacyNotesAsync();
 
         startupTimer.Stop();
 
         // V2 migration
         var migrator = new V2Migrator();
-        if (migrator.HasV2Data && ViewModel.Database != null)
+        if (migrator.HasV2Data && ViewModel.Database != null && !ViewModel.Settings.HasMigratedV2Profiles)
         {
             int profiles = migrator.ImportProfiles(ViewModel.Database);
+            ViewModel.Settings.HasMigratedV2Profiles = true;
+            ViewModel.SaveSettingsSync();
             if (profiles > 0)
                 ShowToast("V2 Import", $"Imported {profiles} profile(s) from V2", ToastNotification.ToastType.Info);
         }
@@ -83,10 +92,10 @@ public partial class MainWindow : Window
         else
         {
             // Show ready toast (don't show during tutorial)
-            if (ViewModel.DetectedInstallations.Count > 0)
+            if (!string.IsNullOrWhiteSpace(ViewModel.CommunityFolderPath) && System.IO.Directory.Exists(ViewModel.CommunityFolderPath))
                 ShowToast("Ready", $"{ViewModel.TotalModCount} mods loaded in {startupTimer.ElapsedMilliseconds}ms", ToastNotification.ToastType.Info);
             else
-                ShowToast("No MSFS Found", "Set a custom path in Settings", ToastNotification.ToastType.Warning);
+                ShowToast("Community Folder Not Found", "Check the selected folder in Settings", ToastNotification.ToastType.Warning);
 
             // Show donate reminder on 3rd launch, then every 10th
             var launches = ViewModel.Settings.LaunchCount;
@@ -205,6 +214,9 @@ public partial class MainWindow : Window
 
     private void StartWatchFolder()
     {
+        _watchService?.Dispose();
+        _watchService = null;
+        if (!ViewModel.Settings.WatchFolderEnabled) return;
         try
         {
             _watchService = new WatchFolderService();
@@ -217,11 +229,89 @@ public partial class MainWindow : Window
             };
             _watchService.Start(ViewModel.Settings.WatchFolderPath);
         }
-        catch { /* Watch folder path invalid or inaccessible */ }
+        catch (Exception ex)
+        {
+            _watchService?.Dispose();
+            _watchService = null;
+            ShowToast("Watch Folder Error", ex.Message, ToastNotification.ToastType.Warning);
+        }
+    }
+
+    private async Task PromptLegacyMigrationAsync()
+    {
+        if (_legacyMigrationPrompted || string.IsNullOrWhiteSpace(ViewModel.CommunityFolderPath) ||
+            !System.IO.Directory.Exists(ViewModel.CommunityFolderPath)) return;
+        try
+        {
+            var storage = new DisabledModStorage();
+            var legacy = storage.GetLegacyDirectories();
+            if (legacy.Count == 0) return;
+            _legacyMigrationPrompted = true;
+            var preview = string.Join("\n", legacy.Take(8).Select(System.IO.Path.GetFileName));
+            if (legacy.Count > 8) preview += $"\n...and {legacy.Count - 8} more";
+            var answer = MessageBox.Show(
+                $"Found {legacy.Count} disabled mod(s) from the previous shared storage:\n{preview}\n\n" +
+                $"Assign them to the currently selected Community folder?\n{ViewModel.CommunityFolderPath}\n\n" +
+                "Their original simulator cannot be determined automatically. Choose No if they belong elsewhere; files will be left untouched and can be imported after restarting with the correct folder selected.",
+                "Import legacy disabled mods", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (answer != MessageBoxResult.Yes) return;
+            var result = storage.MigrateLegacy(ViewModel.CommunityFolderPath);
+            await ViewModel.RefreshModListAsync();
+            var detail = result.Errors.Count == 0 ? $"Imported {result.Moved} disabled mod(s)." :
+                $"Imported {result.Moved}; {result.Errors.Count} could not be moved and remain in the old folder:\n" + string.Join("\n", result.Errors.Take(8));
+            MessageBox.Show(detail, "Legacy import", MessageBoxButton.OK,
+                result.Errors.Count == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Legacy import could not be completed. Check both old and selected storage; no remaining files were overwritten.\n{ex.Message}",
+                "Legacy import", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task PromptLegacyNotesAsync()
+    {
+        var community = ViewModel.CommunityFolderPath;
+        var settings = ViewModel.Settings;
+        if (string.IsNullOrWhiteSpace(community) || !System.IO.Directory.Exists(community) || settings.ModNotes.Count == 0) return;
+        var key = DisabledModStorage.GetCommunityKey(community);
+        if (settings.LegacyNotesAssignedCommunities.Contains(key) || !_legacyNotesPrompted.Add(key)) return;
+        if (MessageBox.Show($"Previous notes were saved by mod name without an installation. Copy them to:\n{community}\n\n" +
+            "Existing notes in this installation will not be overwritten, and the old notes will be retained. " +
+            "Choose No if they belong elsewhere; you can be asked again on a later launch.",
+            "Assign legacy mod notes", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        var result = settings.CopyLegacyNotes(community);
+        try
+        {
+            await ViewModel.SaveSettingsAsync();
+            if (ViewModel.CommunityFolderPath == community) ViewModel.LoadModNotes();
+            MessageBox.Show($"Copied {result.Copied} notes; {result.Skipped} existing notes were left unchanged.",
+                "Legacy notes", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            settings.LegacyNotesAssignedCommunities.Remove(key);
+            MessageBox.Show($"Could not save notes: {ex.Message}", "Legacy notes", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.CommunityFolderPath)) return;
+        // These pages are initialized lazily and otherwise retain the old path.
+        BackupPage.SetCommunityFolder(ViewModel.CommunityFolderPath);
+        ProfilePage.SetCommunityFolder(ViewModel.CommunityFolderPath);
+        if (_initializationComplete)
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                if (!_legacyMigrationPrompted) await PromptLegacyMigrationAsync();
+                await PromptLegacyNotesAsync();
+            }));
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LocalizationService.LanguageChanged -= _localizationHandler;
         _watchService?.Stop();
         _watchService?.Dispose();
@@ -328,7 +418,7 @@ public partial class MainWindow : Window
         switch (page)
         {
             case "Backups":
-                BackupPage.Initialize(ViewModel.Settings, ViewModel.CommunityFolderPath, ShowToast);
+                BackupPage.Initialize(ViewModel.Settings, ViewModel.CommunityFolderPath, ShowToast, () => ViewModel.RefreshModListAsync());
                 break;
             case "Profiles":
                 if (ViewModel.Database != null)
@@ -336,12 +426,12 @@ public partial class MainWindow : Window
                     ProfilePage.Initialize(ViewModel.Database, ViewModel.Mods, ShowToast);
                     if (ViewModel.Installer != null)
                         ProfilePage.SetInstaller(ViewModel.Installer, ViewModel.CommunityFolderPath,
-                            () => ViewModel.RefreshModListAsync());
+                            () => ViewModel.RefreshModListAsync(), () => ViewModel.IsLoading);
                 }
                 break;
             case "Conflicts":
                 if (ViewModel.Database != null)
-                    ConflictPage.Initialize(ViewModel.Database, ViewModel.Mods, ShowToast);
+                    ConflictPage.Initialize(ViewModel.Database, ViewModel.Mods, ShowToast, () => ViewModel.IsLoading);
                 break;
             case "Health":
                 HealthPage.Initialize(ViewModel.Mods, ShowToast);
@@ -430,7 +520,11 @@ public partial class MainWindow : Window
     {
         var mod = ViewModel.SelectedMod;
         if (mod == null) return;
-        await ViewModel.ToggleModAsync(mod);
+        if (!await ViewModel.ToggleModAsync(mod))
+        {
+            ShowToast("Toggle Failed", ViewModel.StatusText, ToastNotification.ToastType.Error);
+            return;
+        }
         var action = mod.Status == ModStatus.Enabled ? "Enabled" : "Disabled";
         ShowToast(action, mod.DisplayName,
             mod.Status == ModStatus.Enabled
@@ -469,11 +563,12 @@ public partial class MainWindow : Window
 
     private async void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        var settingsWindow = new SettingsWindow(ViewModel.Settings) { Owner = this };
+        var settingsWindow = new SettingsWindow(ViewModel.Settings, ViewModel.ActiveSimVersion) { Owner = this };
         if (settingsWindow.ShowDialog() == true)
         {
             await ViewModel.SaveSettingsAsync();
-            await ViewModel.RefreshModListAsync();
+            await ViewModel.ApplyCommunityFolderAsync();
+            StartWatchFolder();
             ShowToast("Settings Saved", "Changes applied", ToastNotification.ToastType.Success);
         }
     }
@@ -615,13 +710,14 @@ public partial class MainWindow : Window
             "Confirm Uninstall", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (result != MessageBoxResult.Yes) return;
 
-        int count = 0;
+        int count = 0, failed = 0;
         foreach (var mod in selected)
         {
-            try { ViewModel.UninstallMod(mod); count++; }
-            catch { }
+            if (ViewModel.TryUninstallMod(mod)) count++;
+            else failed++;
         }
-        ShowToast("Uninstalled", $"Removed {count} mod(s)", ToastNotification.ToastType.Info);
+        ShowToast("Uninstall", $"Removed {count}, failed {failed}",
+            failed > 0 ? ToastNotification.ToastType.Warning : ToastNotification.ToastType.Info);
     }
 
     // ── Drag & Drop ──

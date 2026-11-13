@@ -17,7 +17,7 @@
         </StackPanel>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
-            <Button Content="&#x1F50D;  Scan for Conflicts" Style="{DynamicResource AnimatedPrimaryButton}"
+            <Button x:Name="ScanButton" Content="&#x1F50D;  Scan for Conflicts" Style="{DynamicResource AnimatedPrimaryButton}"
                     Click="ScanConflicts_Click" Margin="0,0,8,0" />
             <TextBlock x:Name="ScanStatus" VerticalAlignment="Center"
                        Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
@@ -58,7 +58,7 @@
                                         <ControlTemplate>
                                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,60,0,0">
                                                 <TextBlock Text="&#x2705;" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                                <TextBlock Text="No conflicts detected" FontSize="16" FontWeight="Light"
+                                                <TextBlock Text="No results to display" FontSize="16" FontWeight="Light"
                                                            Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
                                                 <TextBlock Text="Run a scan to check for file conflicts" FontSize="12"
                                                            Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"

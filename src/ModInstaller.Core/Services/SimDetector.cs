@@ -19,22 +19,12 @@ public class SimDetector
         // Try each detection method, dedup by community folder path
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var install in DetectFromKnownPaths())
+        // The simulator's own package configuration is more authoritative than
+        // a conventional install path, which may be stale after a folder move.
+        foreach (var install in DetectFromUserCfg().Concat(DetectFromKnownPaths()).Concat(DetectFromRegistry()))
         {
-            if (seen.Add(install.CommunityFolder))
-                installations.Add(install);
-        }
-
-        foreach (var install in DetectFromRegistry())
-        {
-            if (seen.Add(install.CommunityFolder))
-                installations.Add(install);
-        }
-
-        foreach (var install in DetectFromUserCfg())
-        {
-            if (seen.Add(install.CommunityFolder))
-                installations.Add(install);
+            var normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(install.CommunityFolder));
+            if (seen.Add(normalized)) installations.Add(install);
         }
 
         return installations;
@@ -108,40 +98,41 @@ public class SimDetector
     /// </summary>
     private IEnumerable<SimInstallation> DetectFromRegistry()
     {
-        // Steam stores install paths in registry
-        string[] registryPaths = [
-            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 1250410", // MSFS 2024
-            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 1250410", // MSFS 2024 alt
-            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 314160",  // MSFS 2020
-        ];
-
-        var simVersions = new[] { SimVersion.MSFS2024, SimVersion.MSFS2024, SimVersion.MSFS2020 };
-
-        for (int i = 0; i < registryPaths.Length; i++)
+        // 1250410 is MSFS 2020; 314160 is Flight Simulator X, not MSFS 2020.
+        foreach (var version in new[] { SimVersion.MSFS2020, SimVersion.MSFS2024 })
         {
-            string? installLocation = null;
-            try
+            var appId = GetSteamAppId(version);
+            var registryPath = $@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App {appId}";
+            foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
             {
-                using var key = Registry.LocalMachine.OpenSubKey(registryPaths[i]);
-                installLocation = key?.GetValue("InstallLocation") as string;
-            }
-            catch { /* Registry access may fail */ }
-
-            if (string.IsNullOrEmpty(installLocation)) continue;
-
-            var communityPath = Path.Combine(installLocation, "Community");
-            if (Directory.Exists(communityPath))
-            {
-                yield return new SimInstallation
+                string? installLocation = null;
+                try
                 {
-                    Version = simVersions[i],
-                    CommunityFolder = communityPath,
-                    Source = InstallSource.Steam,
-                    InstallPath = installLocation
-                };
+                    using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+                    using var key = baseKey.OpenSubKey(registryPath);
+                    installLocation = key?.GetValue("InstallLocation") as string;
+                }
+                catch { /* Registry access may fail */ }
+                if (string.IsNullOrWhiteSpace(installLocation)) continue;
+                var communityPath = Path.Combine(installLocation, "Community");
+                if (Directory.Exists(communityPath))
+                    yield return new SimInstallation
+                    {
+                        Version = version,
+                        CommunityFolder = communityPath,
+                        Source = InstallSource.Steam,
+                        InstallPath = installLocation
+                    };
             }
         }
     }
+
+    public static int GetSteamAppId(SimVersion version) => version switch
+    {
+        SimVersion.MSFS2020 => 1250410,
+        SimVersion.MSFS2024 => 2537590,
+        _ => throw new ArgumentOutOfRangeException(nameof(version))
+    };
 
     /// <summary>
     /// Parse UserCfg.opt files to find custom community folder locations.
