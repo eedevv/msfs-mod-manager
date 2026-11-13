@@ -55,7 +55,7 @@ Numbers match the 37-item audit in the conversation. "Partial" means mitigation 
 | 26: concurrent operations | 2 | Partial: core file mutations are gated in-process and profile loads stop on folder changes; scan overlap, settings changes, external processes and cross-operation batches need further work. |
 | 27–28: notifications and operation results | 2 | Partial: core status properties and toggle/batch uninstall reporting improved; audit other actions. |
 | 29–31: conflict and scan reliability | 2 | Partial: conflicts use enabled mods, report incomplete scans, avoid SQLite worker writes, and invalidate stale results; unreadable individual mods are reported during Community scans. |
-| 32–33: incomplete advertised features and settings | 2 | Open: implement or remove misleading claims and controls. |
+| 32–33: incomplete advertised features and settings | 2 | Partial: nonfunctional startup update/tray controls are disabled and README claims corrected; audit the remaining controls and localization. |
 | 34: watch settings | 2 | Implemented; Windows UI manual test pending. |
 | 35–36: window placement and stale analytics | 2 | Implemented; Windows UI manual test pending. |
 | 37: suppressed errors | 2 | Open: structured errors, UI reporting and recovery. |

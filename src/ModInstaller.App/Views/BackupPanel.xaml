@@ -13,13 +13,13 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
             <TextBlock Text="Backup Manager" FontSize="24" FontWeight="Bold" />
-            <TextBlock Text="Create, restore, and manage mod backups" FontSize="13"
+            <TextBlock Text="Back up enabled Community folders; disabled mods are not included" FontSize="13"
                        Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" />
         </StackPanel>
 
         <!-- Action bar -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
-            <Button Content="&#x1F4BE;  Backup All Mods" Style="{DynamicResource AnimatedPrimaryButton}"
+            <Button Content="&#x1F4BE;  Backup Community Mods" Style="{DynamicResource AnimatedPrimaryButton}"
                     Click="BackupAll_Click" Margin="0,0,8,0" />
             <Button Content="&#x1F4C2;  Open Backup Folder" Style="{DynamicResource AnimatedSecondaryButton}"
                     Click="OpenBackupFolder_Click" Margin="0,0,8,0" />

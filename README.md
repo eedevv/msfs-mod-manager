@@ -12,7 +12,7 @@ The ultimate mod manager for Microsoft Flight Simulator 2020 & 2024.
 
 **Core:**
 - **Install Mods** — Drag & drop ZIP/7z/RAR files or use the Install button
-- **Enable/Disable** — Toggle mods instantly with NTFS junctions (no file copying)
+- **Enable/Disable** — Toggle mods using junctions or copies depending on settings and mod type
 - **Smart Search** — Filter by name, `type:aircraft`, `creator:pmdg`, `status:disabled`
 - **Batch Operations** — Right-click to enable/disable/uninstall multiple mods
 - **Double-Click Toggle** — Fastest way to enable/disable a mod
@@ -23,7 +23,7 @@ The ultimate mod manager for Microsoft Flight Simulator 2020 & 2024.
 - **Mod Notes** — Add personal tags and notes to any mod
 
 **Safety:**
-- **Backup Manager** — Create, restore, compress, and clean mod backups
+- **Backup Manager** — Back up enabled Community folders, restore folder or ZIP backups, and clean managed backups; disabled mods are not included in full backups
 - **Conflict Scanner** — Detect file conflicts between mods
 - **Health Checker** — Validate mod structure, manifests, and integrity
 - **Archive safety** — ZIP paths and sizes are validated; 7z/RAR use external 7-Zip and are not subject to the same safeguards. Use trusted sources and antivirus software.
@@ -31,15 +31,14 @@ The ultimate mod manager for Microsoft Flight Simulator 2020 & 2024.
 **Intelligence:**
 - **Storage Analytics** — Disk usage breakdown, largest mods dashboard
 - **Watch Folder** — Monitors Downloads for new mod archives, notifies you
-- **Mod Update Tracker** — Detects when installed mods have changed
-- **Import from Other Managers** — Migrate from MSFS Addons Linker and others
 
 **Polish:**
 - **14 Languages** — English, German, Russian, French, Spanish, Arabic, Portuguese, Italian, Japanese, Korean, Chinese, Turkish, Polish, Dutch
 - **Auto-Detection** — Finds MSFS 2020/2024 (MS Store, Steam, custom paths)
-- **V2 Migration** — Imports profiles and settings from the V2 batch tool
+- **V2 Profile Migration** — Imports V2 profiles without overwriting existing profiles
 - **First-Time Tutorial** — Guided walkthrough for new users
-- **System Tray** — Minimize to tray option
+
+Mod update tracking, import from other managers, automatic update checks and minimize-to-tray are not currently available in the UI.
 
 ## Keyboard Shortcuts
 

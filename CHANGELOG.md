@@ -12,6 +12,7 @@ This beta is not ready to publish until the Windows release checklist passes. Te
 - ZIP archives are validated before extraction, with traversal, Windows path, duplicate-destination and link checks and uncompressed-size and entry-count limits; actual decompressed bytes are also checked. ZIP extraction no longer falls back to external extractors.
 - Extractor output is drained asynchronously, and V2 profile import no longer overwrites existing profiles or repeats after successful migration.
 - Improved status change notifications, uninstall/toggle reporting, window position restoration and empty analytics. Conflict scans now report incomplete scans, invalidate stale results and impose safety limits instead of silently claiming a clean scan.
+- Disable nonfunctional update-check and minimize-to-tray settings and clarify that full backups exclude disabled mods.
 - Apply watch-folder settings immediately, scan Community folders in the background, report individual unreadable mods and avoid listing temporary staging folders as mods.
 - Reject overlapping core file mutations within the running application rather than running them simultaneously; operations from other processes are not coordinated.
 - Disabled mods and newly managed library content are separated by Community folder. Legacy disabled mods require explicit assignment; collisions are left untouched.
