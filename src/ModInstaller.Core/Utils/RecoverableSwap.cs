@@ -2,7 +2,7 @@ namespace ModInstaller.Core.Utils;
 
 /// <summary>
 /// Promotes a staged directory or junction while keeping the displaced item on the
-/// same volume. Interrupted swaps can be repaired if the destination is missing.
+/// same volume. Ambiguous interrupted swaps are reported for manual recovery.
 /// Recovery folders are deliberately retained for the user; never delete link targets.
 /// </summary>
 public static class RecoverableSwap
@@ -33,18 +33,22 @@ public static class RecoverableSwap
         var pending = Path.Combine(recovery, "pending");
         File.WriteAllText(pending, "");
         var retired = false;
+        var promoted = false;
         try
         {
             Directory.Move(destination, original);
             retired = true;
             beforePromote?.Invoke();
             Directory.Move(stage, destination);
+            promoted = true;
             File.Move(pending, Path.Combine(recovery, "committed"));
             return recovery;
         }
         catch (Exception ex)
         {
-            if (retired && !Directory.Exists(destination) && !File.Exists(destination))
+            if (promoted)
+                throw new IOException($"Replacement was installed, but its recovery marker could not be finalized. The previous item remains at {original}; do not repeat the operation without checking both locations.", ex);
+            if (retired && !Directory.Exists(destination) && !File.Exists(destination) && !JunctionHelper.IsJunction(destination))
             {
                 try { Directory.Move(original, destination); }
                 catch (Exception rollbackError)
@@ -56,7 +60,7 @@ public static class RecoverableSwap
         }
     }
 
-    /// <summary>Restore the original only if promotion was interrupted and no destination exists.</summary>
+    /// <summary>Report ambiguous interruptions rather than restoring something the user may have removed after promotion.</summary>
     public static List<string> RecoverInterrupted(string communityFolder)
     {
         var errors = new List<string>();
@@ -75,10 +79,7 @@ public static class RecoverableSwap
                     throw new IOException("Invalid recovery destination name.");
                 var destination = Path.Combine(communityFolder, name);
                 if (!Directory.Exists(destination) && !File.Exists(destination) && !JunctionHelper.IsJunction(destination))
-                {
-                    Directory.Move(original, destination);
-                    File.Move(pending, Path.Combine(folder, "rolledback"));
-                }
+                    errors.Add($"Interrupted replacement for {destination}. Original retained at {original}; inspect and restore it manually if needed.");
                 else
                     File.Move(pending, Path.Combine(folder, "committed"));
             }

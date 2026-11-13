@@ -263,8 +263,10 @@ internal static class Program
             File.WriteAllText(Path.Combine(interrupted, "destination.txt"), "interrupted-mod");
             File.WriteAllText(Path.Combine(interrupted, "pending"), "");
             File.WriteAllText(Path.Combine(interrupted, "original", "data.txt"), "safe");
-            Check(RecoverableSwap.RecoverInterrupted(community).Count == 0 &&
-                File.Exists(Path.Combine(interruptedDest, "data.txt")), "Interrupted replacement should recover its original.");
+            var warnings = RecoverableSwap.RecoverInterrupted(community);
+            Check(warnings.Count == 1 && !Directory.Exists(interruptedDest) &&
+                File.Exists(Path.Combine(interrupted, "original", "data.txt")),
+                "Ambiguous interruption must retain the original and require manual recovery, not resurrect a removed mod.");
 
             var unrelated = Path.Combine(settings.BackupDirectory, "unrelated");
             Directory.CreateDirectory(unrelated);

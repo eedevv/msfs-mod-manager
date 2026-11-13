@@ -4,11 +4,11 @@ The beta must remain a prerelease, not replace the latest stable release. Do not
 
 ## Phase 1 — Data safety
 
-- [x] Reject install replacement and enable/disable collisions rather than deleting existing data. Replacement/restore overwrite is temporarily unavailable pending a transactional implementation.
+- [x] Require confirmation for install replacement; enable/disable collisions are rejected. Replaced items are retained for recovery.
 - [x] Stage new copies and never delete a junction target during uninstall. Resolve disabled junction markers for enable and backup.
-- [x] Restore full backups to individual folders without overwriting; restrict automatic cleanup to metadata-marked directories.
+- [x] Restore full backups to individual folders, with optional staged replacement; restrict automatic cleanup to metadata-marked directories.
 - [x] Avoid overwriting existing V3 profiles during V2 import and avoid repeating the import.
-- [ ] Test recovery, unusual reparse points, copy failures, full backup and marker migration on Windows; add a truly transactional replacement/restore with rollback.
+- [ ] Test recovery, unusual reparse points, copy failures, full backup and marker migration on Windows. Replacement rolls back a failed promotion where possible, but batch operations are not transactional and ambiguous interruptions require manual review.
 - [x] Isolate disabled mods and new library content by Community folder; ask before assigning old shared disabled data.
 - [ ] Isolate database, profile and note identity by installation; review migration and alias paths.
 

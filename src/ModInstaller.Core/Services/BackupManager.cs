@@ -169,7 +169,7 @@ public class BackupManager
         if (isFullBackup)
         {
             var folders = Directory.GetDirectories(backupPath);
-            // Check all destinations before changing anything; overwrites are intentionally disabled.
+            // Check all destinations before changing anything when overwrite is not allowed.
             if (!overwrite)
                 foreach (var folder in folders)
                     EnsureDestinationFree(Path.Combine(communityFolder, Path.GetFileName(folder)));

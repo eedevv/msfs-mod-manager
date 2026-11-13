@@ -191,8 +191,6 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var recoveryErrors = RecoverableSwap.RecoverInterrupted(communityFolder);
-            if (recoveryErrors.Count > 0)
-                throw new IOException("Could not recover an interrupted replacement: " + string.Join("; ", recoveryErrors));
             var progress = new Progress<string>(msg =>
             {
                 if (generation == _scanGeneration) StatusText = msg;
@@ -245,7 +243,8 @@ public partial class MainViewModel : ObservableObject
             _db?.UpsertMods(sorted);
             LoadModNotes();
             UpdateStats();
-            StatusText = $"Loaded {mods.Count} mods";
+            StatusText = recoveryErrors.Count == 0 ? $"Loaded {mods.Count} mods" :
+                "Recovery needs attention: " + string.Join("; ", recoveryErrors);
         }
         catch (Exception ex)
         {
